@@ -102,7 +102,7 @@ confiabilidade da avaliação, erro de medida por teste–reteste (MDC), mudanç
 
 ## Para quem for mexer no código
 
-- Estrutura do projeto, como acrescentar uma medida e combinados do projeto: [LEIA-ME.md](LEIA-ME.md).
+- Estrutura do projeto, como acrescentar uma medida e combinados do projeto: [DESENVOLVIMENTO.md](DESENVOLVIMENTO.md).
 - Testes automáticos: `.venv\Scripts\python.exe tools\testar.py`.
 - Opções de linha de comando: `.venv\Scripts\python.exe sistema.py --help`
   (`--sim` mão simulada, `--cam 1` outra câmera, `--resolucao 1280x720`, `--banco outro.sqlite`).

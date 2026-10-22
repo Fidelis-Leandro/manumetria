@@ -8,7 +8,7 @@ Executar:  .venv\\Scripts\\python.exe sistema.py                  (webcam 0)
            .venv\\Scripts\\python.exe sistema.py --help           (todas as opções)
 Ou com dois cliques em "Abrir sistema.bat".
 
-Estrutura do código: veja LEIA-ME.md.
+Estrutura do código: veja DESENVOLVIMENTO.md.
 """
 
 import argparse

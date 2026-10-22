@@ -180,4 +180,4 @@ README.md.
 - `sistema.py`: ponto de entrada. `app/`: telas, motor da avaliação, dados. Raiz: cálculo (`kinematics.py`,
   `medidas.py`), câmera (`capture.py`), mão 3D (`hand_skin.py`).
 - `tools/`: testes, demonstração, instalador do MANO e análise de gravações.
-- Detalhes para manutenção: `LEIA-ME.md`.
+- Detalhes para manutenção: `DESENVOLVIMENTO.md`.
