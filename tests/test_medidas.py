@@ -2,11 +2,11 @@
 Testes das medidas novas (velocidade de pico, suavidade, fadiga, Strickland,
 arco funcional, polpa-palma, abertura, tremor, confiabilidade) e da
 interpretação (erro de medida por reteste, mudança real, tendência).
-Também passa uma gravação real pelo motor (tools/gravacao_referencia.npz, mão
+Também passa uma gravação real pelo motor (tests/dados/gravacao_referencia.npz, mão
 saudável, ou outro arquivo de pontos informado) e mostra as medidas dela.
 
-    .venv\\Scripts\\python.exe tools\\test_medidas.py
-    .venv\\Scripts\\python.exe tools\\test_medidas.py dados_locais\\pontos\\sessao_xxx.npz
+    .venv\\Scripts\\python.exe tests\\test_medidas.py
+    .venv\\Scripts\\python.exe tests\\test_medidas.py dados_locais\\pontos\\sessao_xxx.npz
 """
 
 import datetime
@@ -117,7 +117,7 @@ check("mão longe: avisa só depois de meio segundo", far[-2] is None and far[-1
 check("mão de volta à distância certa: aviso some na hora", dc.update(hand(0.28)) is None)
 check("um quadro só muito perto não avisa", dc.update(hand(0.6)) is None)
 dc = medidas.DistanceCheck()
-reference = capture.load_recording(os.path.join(os.path.dirname(__file__), "gravacao_referencia.npz"))
+reference = capture.load_recording(os.path.join(os.path.dirname(__file__), "dados", "gravacao_referencia.npz"))
 warned = sum(dc.update(r) is not None for r in reference)
 check("gravação real a ~50 cm: nenhum aviso de distância", warned == 0, f"{warned} quadros com aviso")
 
@@ -236,7 +236,7 @@ check("recalcular a partir dos pontos gravados reproduz a avaliação ao vivo",
       same(live.results(rows[-1]["t"], "")) == same(analisar(rows).results(rows[-1]["t"], "")))
 
 # -------------------------------------------- gravação real (se informada)
-RECORDING = sys.argv[1] if len(sys.argv) > 1 else os.path.join(os.path.dirname(__file__), "gravacao_referencia.npz")
+RECORDING = sys.argv[1] if len(sys.argv) > 1 else os.path.join(os.path.dirname(__file__), "dados", "gravacao_referencia.npz")
 if os.path.exists(RECORDING):
     rows = capture.load_recording(RECORDING)
     av = analisar(rows)                        # o mesmo motor da tela de avaliação

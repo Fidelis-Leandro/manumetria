@@ -85,7 +85,7 @@ Esperado: aparece o arquivo `hand_landmarker.task` (cerca de 7,8 MB) na pasta do
 ### 5. Rodar os testes automáticos
 
 ```powershell
-.venv\Scripts\python.exe tools\testar.py
+.venv\Scripts\python.exe tests\testar.py
 ```
 
 Esperado: cinco linhas `ok` e `Todos os testes passaram.` Sem o MANO, o teste da mão 3D avisa
@@ -140,7 +140,7 @@ modelo carrega.
 
 **7c. Confirmar que funcionou:**
 
-1. `.venv\Scripts\python.exe tools\testar.py`: todos `ok`. O teste `test_hand_skin.py` agora mostra
+1. `.venv\Scripts\python.exe tests\testar.py`: todos `ok`. O teste `test_hand_skin.py` agora mostra
    linhas `[MANO right]` e `[MANO left]` com "IK em 200 poses aleatórias" (antes dizia "pulando").
 2. Abra o sistema (`sistema.py --sim` serve) e inicie uma avaliação: a mão 3D com pele aparece no palco e
    o aviso "Mão 3D não instalada" some. Se o sistema já estava aberto, feche e abra de novo.
@@ -179,5 +179,5 @@ README.md.
 
 - `sistema.py`: ponto de entrada. `app/`: telas, motor da avaliação, dados. Raiz: cálculo (`kinematics.py`,
   `medidas.py`), câmera (`capture.py`), mão 3D (`hand_skin.py`).
-- `tools/`: testes, demonstração, instalador do MANO e análise de gravações.
+- `tests/`: testes automáticos. `tools/`: demonstração, instalador do MANO e análise de gravações.
 - Detalhes para manutenção: `DESENVOLVIMENTO.md`.

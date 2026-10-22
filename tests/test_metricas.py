@@ -3,7 +3,7 @@ Testes das métricas por dedo do kinematics.py (sem câmera, sem interface):
 sinal dos ângulos, déficit de extensão, arco, velocidade, ciclo, cadência,
 regularidade, variação de amplitude, independência e contribuição.
 
-    .venv\\Scripts\\python.exe tools\\test_metricas.py
+    .venv\\Scripts\\python.exe tests\\test_metricas.py
 """
 
 import os

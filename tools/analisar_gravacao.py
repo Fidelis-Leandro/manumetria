@@ -1,5 +1,5 @@
 """
-Analisa um arquivo de pontos (dados_locais/pontos/*.npz ou tools/gravacao_referencia.npz)
+Analisa um arquivo de pontos (dados_locais/pontos/*.npz ou tests/dados/gravacao_referencia.npz)
 passando-o pelo mesmo motor da tela de avaliação (app/avaliador.py):
 
   1) captura: quadros, fps, brilho, quanto a mão foi detectada, falhas

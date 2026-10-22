@@ -14,7 +14,7 @@ para profissionais de reabilitação. **Versão de teste: use apenas dados fict�
 ```
 
 - Pacientes fictícios de demonstração (EX-001, João e Maria): `.venv\Scripts\python.exe tools\criar_demonstracao.py`
-- Todos os testes automáticos: `.venv\Scripts\python.exe tools\testar.py`
+- Todos os testes automáticos: `.venv\Scripts\python.exe tests\testar.py`
 
 ## Onde ficam os dados
 
@@ -65,10 +65,12 @@ câmera ─► capture.py ─► app/avaliador.py ──────────
 | `componentes/` | partes das telas: palco 3D, painel do dedo (`painel.py`), peças pequenas como réguas, barras e abas (`pecas.py`), mapa da evolução (`mapa.py`), gráfico, barra do topo, dicas, diálogos |
 | `dados/` | banco, configurações, resultados, interpretação, PDF, exportação, recálculo |
 
-**Ferramentas** — pasta `tools/`: `testar.py` (roda todos os testes), `test_*.py`,
-`criar_demonstracao.py` (3 pacientes fictícios com avaliações simuladas pelo mesmo motor da câmera),
-`analisar_gravacao.py` (passa um arquivo de pontos pelo motor e mostra a linha do tempo) e
-`gravacao_referencia.npz` (pontos de uma mão saudável real, usados pelos testes).
+**Testes** — pasta `tests/`: `testar.py` (roda todos os testes), `test_*.py` e
+`dados/gravacao_referencia.npz` (pontos de uma mão saudável real, usados pelos testes).
+
+**Ferramentas** — pasta `tools/`: `criar_demonstracao.py` (3 pacientes fictícios com avaliações
+simuladas pelo mesmo motor da câmera), `analisar_gravacao.py` (passa um arquivo de pontos pelo motor e
+mostra a linha do tempo) e `instalar_mano.py` (usado pelo `Instalar mao 3D.bat`).
 
 ## Como acrescentar uma medida nova
 
@@ -76,8 +78,8 @@ câmera ─► capture.py ─► app/avaliador.py ──────────
 2. Guarde no resultado em `app/dados/resultados.py` (o banco salva o dicionário inteiro).
 3. Mostre no painel (`app/componentes/painel.py`), na ficha ou no CSV, se quiser.
 4. Explique a medida em `app/glossario.py` (vale para a dica ao passar o mouse e para a Ajuda) e use `explain(widget, "chave")` onde ela aparece.
-5. Escreva um teste em `tools/test_medidas.py` com um caso de resposta conhecida.
-6. Rode `tools\testar.py`.
+5. Escreva um teste em `tests/test_medidas.py` com um caso de resposta conhecida.
+6. Rode `tests\testar.py`.
 7. Para as avaliações já salvas ganharem a medida: Configurações > **Recalcular avaliações**
    (`app/dados/recalculo.py`). Ele passa os pontos gravados pelo cálculo atual, mostra o que
    muda antes de gravar e guarda o resultado anterior dentro da avaliação (`"original"`).
@@ -85,7 +87,7 @@ câmera ─► capture.py ─► app/avaliador.py ──────────
 
 O motor usa o horário de cada quadro (`raw["t"]`), não o relógio do computador: por isso
 recalcular a partir dos pontos dá exatamente o mesmo resultado da avaliação ao vivo
-(há um teste para isso em `tools/test_medidas.py`).
+(há um teste para isso em `tests/test_medidas.py`).
 
 ## Banco de dados
 

@@ -44,7 +44,7 @@ echo [4/5] Baixando o modelo do MediaPipe (se ainda nao tiver) ...
 
 rem --- 5. Testes e demonstracao
 echo [5/5] Rodando os testes e criando os pacientes ficticios de demonstracao ...
-".venv\Scripts\python.exe" tools\testar.py || goto falhou
+".venv\Scripts\python.exe" tests\testar.py || goto falhou
 ".venv\Scripts\python.exe" tools\criar_demonstracao.py || goto falhou
 
 echo.

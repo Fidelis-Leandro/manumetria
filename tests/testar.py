@@ -1,12 +1,12 @@
 """
 Roda todos os testes automáticos (sem câmera e sem abrir janelas) e resume.
 
-    .venv\\Scripts\\python.exe tools\\testar.py
+    .venv\\Scripts\\python.exe tests\\testar.py
 
 Com uma gravação real, os testes de medidas também conferem que uma mão
 saudável não recebe nenhuma limitação:
 
-    .venv\\Scripts\\python.exe tools\\testar.py gravacoes\\sessao_XXXX.npz
+    .venv\\Scripts\\python.exe tests\\testar.py gravacoes\\sessao_XXXX.npz
 """
 
 import os

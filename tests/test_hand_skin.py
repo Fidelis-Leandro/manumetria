@@ -10,7 +10,7 @@ a mão de referência do geometria.py, e verifica:
 
 Se os arquivos reais estiverem em assets/mano/, roda também com eles.
 
-    .venv\\Scripts\\python.exe tools\\test_hand_skin.py
+    .venv\\Scripts\\python.exe tests\\test_hand_skin.py
 """
 
 import os

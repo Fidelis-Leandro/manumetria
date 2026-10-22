@@ -1,7 +1,7 @@
 """
 Testes do stabilizer.py com sequências montadas (30 fps).
 
-    .venv\\Scripts\\python.exe tools\\test_stabilizer.py
+    .venv\\Scripts\\python.exe tests\\test_stabilizer.py
 """
 
 import os

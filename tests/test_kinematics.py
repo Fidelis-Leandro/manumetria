@@ -5,7 +5,7 @@ Testes do kinematics.py com a mão simulada (sem câmera e sem interface).
   2) movimentos pequenos ("formiguinha") acima da sensibilidade -> conta todos
   3) classificação movimento / parcial / completa
 
-    .venv\\Scripts\\python.exe tools\\test_kinematics.py
+    .venv\\Scripts\\python.exe tests\\test_kinematics.py
 """
 
 import os
