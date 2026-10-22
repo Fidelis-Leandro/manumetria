@@ -6,8 +6,8 @@ então uma sessão salva semanas atrás é lida exatamente como uma recém-feita
 
 import csv
 
-import kinematics as kin
-import medidas
+from nucleo import kinematics as kin
+from nucleo import medidas
 
 # 2: medidas novas (arco funcional, Strickland, polpa-palma, velocidade de pico,
 #    suavidade, tendências, mão inteira, tremor, confiabilidade, pontos gravados).

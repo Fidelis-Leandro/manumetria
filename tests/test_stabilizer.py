@@ -10,7 +10,7 @@ import sys
 import numpy as np
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from stabilizer import HOLD_S, HandStabilizer  # noqa: E402
+from nucleo.stabilizer import HOLD_S, HandStabilizer  # noqa: E402
 
 FPS = 30
 HAND = np.zeros((21, 3))

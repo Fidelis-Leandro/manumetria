@@ -10,10 +10,10 @@ anteriores ficam guardados dentro da avaliação, em "original".
 import datetime
 import os
 
-import capture
 from app.avaliador import analisar
-from app.dados.banco import ROOT
 from app.dados.resultados import mean_pct, retest_summary
+from nucleo import capture
+from nucleo.caminhos import ROOT
 
 KEEP = ("inicio", "duracao_s", "fonte", "pontos")   # dados da sessão, não do cálculo
 

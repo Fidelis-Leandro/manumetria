@@ -19,11 +19,9 @@ from app.componentes.cabecalho import ScreenHeader
 from app.componentes.dialogos import ConfirmDialog
 from app.dados import documento
 from app.dados import interpretacao as interp
-from app.dados.banco import ROOT
 from app.dados.resultados import retest_summary, write_csv
 from app.tema import *  # noqa: F401,F403
-
-REPORTS_DIR = os.path.join(ROOT, "relatorios")
+from nucleo.caminhos import REPORTS_DIR
 
 
 def _safe(text):

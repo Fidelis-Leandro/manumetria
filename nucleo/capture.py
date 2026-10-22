@@ -24,11 +24,11 @@ import urllib.request
 
 import numpy as np
 
-from geometria import FINGERTIPS, HAND_CONNECTIONS
+from nucleo.caminhos import MODEL_PATH
+from nucleo.geometria import FINGERTIPS, HAND_CONNECTIONS
 
 # O mediapipe atual usa a API Tasks, que precisa de um arquivo de modelo (.task),
-# baixado na primeira execução.
-MODEL_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "hand_landmarker.task")
+# baixado na primeira execução (MODEL_PATH, na pasta do projeto).
 MODEL_URL = ("https://storage.googleapis.com/mediapipe-models/hand_landmarker/"
              "hand_landmarker/float16/latest/hand_landmarker.task")
 

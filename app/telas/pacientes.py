@@ -5,15 +5,15 @@ import datetime
 
 from PyQt5 import QtCore, QtGui, QtWidgets
 
-import kinematics as kin
-from icons import icon
 from app.componentes.cabecalho import ScreenHeader
 from app.componentes.dialogos import DIALOG_CSS, ConfirmDialog
 from app.componentes.pecas import SegmentedTabs
 from app.dados import interpretacao as interp
 from app.dados.resultados import mean_pct
 from app.glossario import explain_columns
+from app.icones import icon
 from app.tema import *  # noqa: F401,F403
+from nucleo import kinematics as kin
 
 NOT_INFORMED = "não informada"
 HANDS_DOMINANT = [NOT_INFORMED, "Direita", "Esquerda", "Ambidestro"]

@@ -9,9 +9,9 @@ import csv
 import datetime
 import os
 
-import kinematics as kin
 from app.dados.resultados import CALIBRATION_NAMES, CSV_HEADER, SLOTS, csv_num, finger_row
 from app.formato import age_from
+from nucleo import kinematics as kin
 
 HAND = {"Right": "direita", "Left": "esquerda"}
 

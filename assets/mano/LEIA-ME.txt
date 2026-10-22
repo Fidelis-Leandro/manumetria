@@ -22,4 +22,4 @@ Sem estes arquivos o sistema funciona e mede normalmente; só a mão 3D não
 aparece (a tela de avaliação mostra um aviso no lugar dela).
 
 Para testar a conversão e a cinemática inversa com os arquivos reais:
-    .venv\Scripts\python.exe tests\test_hand_skin.py
+    .venv\Scripts\python.exe tests\test_mao3d.py

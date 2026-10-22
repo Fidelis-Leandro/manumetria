@@ -1,5 +1,5 @@
 """
-Testes do hand_skin.py SEM os arquivos do MANO.
+Testes da mão 3D (app/componentes/mao3d.py) SEM os arquivos do MANO.
 
 Monta um modelo sintético com o mesmo formato do MANO (778 vértices, 16
 articulações, pontas nos mesmos índices de vértice, pesos de skinning) usando
@@ -10,7 +10,7 @@ a mão de referência do geometria.py, e verifica:
 
 Se os arquivos reais estiverem em assets/mano/, roda também com eles.
 
-    .venv\\Scripts\\python.exe tests\\test_hand_skin.py
+    .venv\\Scripts\\python.exe tests\\test_mao3d.py
 """
 
 import os
@@ -20,8 +20,8 @@ import time
 import numpy as np
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-import hand_skin as hs  # noqa: E402
-import geometria  # noqa: E402
+from app.componentes import mao3d as hs  # noqa: E402
+from nucleo import geometria  # noqa: E402
 
 
 def synthetic_model():

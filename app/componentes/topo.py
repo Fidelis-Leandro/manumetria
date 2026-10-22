@@ -3,8 +3,8 @@
 import numpy as np
 from PyQt5 import QtWidgets
 
-from icons import pixmap
 from app.glossario import tip
+from app.icones import pixmap
 from app.tema import *  # noqa: F401,F403
 
 

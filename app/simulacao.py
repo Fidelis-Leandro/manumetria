@@ -4,8 +4,8 @@ import time
 
 import numpy as np
 
-import capture
-import geometria
+from nucleo import capture
+from nucleo import geometria
 
 
 class DemoHand:

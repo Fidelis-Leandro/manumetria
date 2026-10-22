@@ -19,17 +19,16 @@ from dataclasses import dataclass
 
 import numpy as np
 
-import capture
-import kinematics as kin
-import medidas
-from app.dados.banco import DATA_DIR, ROOT
 from app.dados.resultados import HAND_NAMES, session_results
-from stabilizer import HandStabilizer
+from nucleo import capture
+from nucleo import kinematics as kin
+from nucleo import medidas
+from nucleo.caminhos import POINTS_DIR, ROOT
+from nucleo.stabilizer import HandStabilizer
 
 HAND_FRAMES_TO_START = 15     # quadros seguidos com mão para sair da preparação
 OPEN_HAND_WAIT_S = 5.0        # depois disso aceita a mão como está (ex.: contratura)
 NOTICE_S = 2.5                # duração dos avisos curtos (ex.: "outra mão detectada")
-POINTS_DIR = os.path.join(DATA_DIR, "pontos")
 
 
 @dataclass

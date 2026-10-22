@@ -13,10 +13,10 @@ import math
 
 from PyQt5 import QtCore, QtGui, QtPrintSupport
 
-import kinematics as kin
 from app.dados import config as cfgmod
 from app.dados.resultados import CALIBRATION_NAMES, HAND_NAMES, deficit_total
 from app.formato import age_from, date_labels, fmt_date, fmt_datetime, fmt_deg, fmt_duration, fmt_num, fmt_pct
+from nucleo import kinematics as kin
 
 # Cores para papel (fundo branco)
 INK = "#1d2733"

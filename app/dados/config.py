@@ -4,10 +4,9 @@ tema da interface e se as dicas da avaliação já foram vistas."""
 import json
 import os
 
-from app.dados.banco import DATA_DIR, ROOT
+from nucleo.caminhos import ASSETS_DIR, CONFIG_PATH, DATA_DIR, ROOT
 
-CONFIG_PATH = os.path.join(DATA_DIR, "config.json")
-LOGO_DIR = os.path.join(ROOT, "assets")
+LOGO_DIR = ASSETS_DIR     # para onde vai o logotipo escolhido em Configurações
 DEFAULTS = {
     "instituicao": "UFCSPA — Universidade Federal de Ciências da Saúde de Porto Alegre",
     "titulo": "Relatório de avaliação cinemática da mão",

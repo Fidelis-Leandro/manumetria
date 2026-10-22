@@ -17,9 +17,9 @@ import sys
 import numpy as np
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-import capture  # noqa: E402
-import kinematics as kin  # noqa: E402
 from app.avaliador import Avaliador  # noqa: E402
+from nucleo import capture  # noqa: E402
+from nucleo import kinematics as kin  # noqa: E402
 
 if len(sys.argv) < 2:
     sys.exit(__doc__)

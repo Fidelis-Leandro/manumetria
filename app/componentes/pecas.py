@@ -4,8 +4,8 @@ segmentadas (usadas também na ficha e na lista de pacientes)."""
 import numpy as np
 from PyQt5 import QtCore, QtGui, QtWidgets
 
-import kinematics as kin
 from app.tema import *  # noqa: F401,F403
+from nucleo import kinematics as kin
 
 
 class FingerChip(QtWidgets.QAbstractButton):

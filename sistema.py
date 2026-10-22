@@ -18,10 +18,10 @@ import sys
 import pyqtgraph as pg
 from PyQt5 import QtWidgets, sip
 
-import capture
 from app.dados import config as cfgmod
 from app.janela import AppWindow
 from app.simulacao import DemoHand
+from nucleo import capture
 
 
 def make_source_factory(args):

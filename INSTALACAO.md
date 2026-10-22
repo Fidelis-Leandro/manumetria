@@ -77,7 +77,7 @@ Esperado: termina sem `ERROR`. São cerca de 300 MB (mediapipe, opencv, PyQt5). 
 ### 4. Baixar o modelo de detecção da mão (MediaPipe)
 
 ```powershell
-.venv\Scripts\python.exe -c "import capture; capture.ensure_model()"
+.venv\Scripts\python.exe -c "from nucleo import capture; capture.ensure_model()"
 ```
 
 Esperado: aparece o arquivo `hand_landmarker.task` (cerca de 7,8 MB) na pasta do projeto.
@@ -140,7 +140,7 @@ modelo carrega.
 
 **7c. Confirmar que funcionou:**
 
-1. `.venv\Scripts\python.exe tests\testar.py`: todos `ok`. O teste `test_hand_skin.py` agora mostra
+1. `.venv\Scripts\python.exe tests\testar.py`: todos `ok`. O teste `test_mao3d.py` agora mostra
    linhas `[MANO right]` e `[MANO left]` com "IK em 200 poses aleatórias" (antes dizia "pulando").
 2. Abra o sistema (`sistema.py --sim` serve) e inicie uma avaliação: a mão 3D com pele aparece no palco e
    o aviso "Mão 3D não instalada" some. Se o sistema já estava aberto, feche e abra de novo.
@@ -177,7 +177,8 @@ README.md.
 
 ## Estrutura (resumo)
 
-- `sistema.py`: ponto de entrada. `app/`: telas, motor da avaliação, dados. Raiz: cálculo (`kinematics.py`,
-  `medidas.py`), câmera (`capture.py`), mão 3D (`hand_skin.py`).
+- `sistema.py`: ponto de entrada. `nucleo/`: cálculo sem interface (`kinematics.py`, `medidas.py`), câmera
+  (`capture.py`) e os caminhos do projeto (`caminhos.py`). `app/`: telas, motor da avaliação, dados, mão 3D
+  (`app/componentes/mao3d.py`).
 - `tests/`: testes automáticos. `tools/`: demonstração, instalador do MANO e análise de gravações.
 - Detalhes para manutenção: `DESENVOLVIMENTO.md`.

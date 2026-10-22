@@ -15,20 +15,20 @@ import time
 import numpy as np
 from PyQt5 import QtCore, QtWidgets
 
-import geometria
-import hand_skin
-import kinematics as kin
-import medidas
 from app.avaliador import Avaliador
+from app.componentes import mao3d
 from app.componentes.dialogos import ConfirmDialog
 from app.componentes.grafico import TamChart
 from app.componentes.guia import GuidedTour
 from app.componentes.painel import DetailPanel
-from app.componentes.pecas import FingerChip
 from app.componentes.palco import Hand3D, StageToolbar, ViewStage
+from app.componentes.pecas import FingerChip
 from app.componentes.topo import CaptureQuality, TopBar
 from app.glossario import explain
 from app.tema import *  # noqa: F401,F403
+from nucleo import geometria
+from nucleo import kinematics as kin
+from nucleo import medidas
 
 DISTANCE_TEXT = {"longe": "Mão longe: aproxime da câmera (cerca de 50 cm)",
                  "perto": "Mão muito perto: afaste um pouco da câmera"}
@@ -479,7 +479,7 @@ class EvaluationScreen(QtWidgets.QWidget):
         """Pele 3D: cada dedo com a cor da sua classificação; o selecionado
         forte, os outros em tom pastel da mesma cor. Cores do palco (VIEW_*):
         o fundo do 3D é escuro nos dois temas."""
-        skin = np.array(hand_skin.SKIN_COLOR)
+        skin = np.array(mao3d.SKIN_COLOR)
         colors = {}
         for f in kin.FINGERS:
             grade_hex = VIEW_GRADE_COLOR[kin.grade(self.av.session.trackers[f].percent_normal())]

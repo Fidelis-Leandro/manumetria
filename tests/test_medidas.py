@@ -18,13 +18,13 @@ import types
 import numpy as np
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-import capture  # noqa: E402
-import kinematics as kin  # noqa: E402
-import medidas  # noqa: E402
-import geometria  # noqa: E402
 import app.simulacao as sim  # noqa: E402
 from app.avaliador import Avaliador, analisar  # noqa: E402
 from app.dados import interpretacao as interp  # noqa: E402
+from nucleo import capture  # noqa: E402
+from nucleo import geometria  # noqa: E402
+from nucleo import kinematics as kin  # noqa: E402
+from nucleo import medidas  # noqa: E402
 
 FPS = 30
 rng = np.random.default_rng(3)

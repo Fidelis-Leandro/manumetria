@@ -5,9 +5,9 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 import pyqtgraph as pg
 import pyqtgraph.opengl as gl
 
-import geometria
-import hand_skin
+from app.componentes import mao3d
 from app.tema import *  # noqa: F401,F403
+from nucleo import geometria
 
 
 class Hand3D:
@@ -24,7 +24,7 @@ class Hand3D:
         self.view.addItem(grid)
         self.reset_camera()
         try:
-            self.skin = hand_skin.SkinHand(self.view)
+            self.skin = mao3d.SkinHand(self.view)
         except FileNotFoundError as exc:
             print(f"Mão 3D indisponível: {exc}")
             self.skin = None

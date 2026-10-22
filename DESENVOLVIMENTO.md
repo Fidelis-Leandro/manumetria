@@ -32,16 +32,18 @@ para profissionais de reabilitação. **Versão de teste: use apenas dados fict�
 O caminho de um quadro da câmera até a tela:
 
 ```
-câmera ─► capture.py ─► app/avaliador.py ─────────────► app/telas/avaliacao.py (mostra)
-                         (fases, calibração,              │
-                          estabilizador, medidas)          ▼ ao encerrar
-                         usa: kinematics.py              resultados (dicionário)
-                              stabilizer.py                ├─► app/dados/banco.py (salva)
-                              medidas.py                   ├─► app/dados/documento.py (PDF)
-                                                           └─► app/dados/interpretacao.py (ficha)
+câmera ─► nucleo/capture.py ─► app/avaliador.py ───────► app/telas/avaliacao.py (mostra)
+                                (fases, calibração,        │
+                                 estabilizador, medidas)    ▼ ao encerrar
+                                usa: nucleo/kinematics.py  resultados (dicionário)
+                                     nucleo/stabilizer.py    ├─► app/dados/banco.py (salva)
+                                     nucleo/medidas.py       ├─► app/dados/documento.py (PDF)
+                                                             └─► app/dados/interpretacao.py (ficha)
 ```
 
-**Cálculo (sem interface, numpy puro)** — na raiz:
+As dependências vão num sentido só: `app/` usa `nucleo/`, e `nucleo/` nunca importa de `app/`.
+
+**Cálculo (sem interface, numpy puro)** — pasta `nucleo/`:
 
 | Arquivo | Faz |
 |---|---|
@@ -50,8 +52,7 @@ câmera ─► capture.py ─► app/avaliador.py ──────────
 | `stabilizer.py` | segura falhas curtas do MediaPipe e fixa o lado da mão |
 | `geometria.py` | pontos da mão, mão sintética (simulação/testes), conversão para o 3D |
 | `capture.py` | webcam + MediaPipe, arquivos de pontos (gravar, ler, reproduzir) |
-| `hand_skin.py` | mão 3D com pele (modelo MANO) |
-| `icons.py` | ícones desenhados em SVG |
+| `caminhos.py` | todas as pastas e arquivos do projeto (dados locais, relatórios, assets, modelos) |
 
 **Aplicação** — pasta `app/`:
 
@@ -60,9 +61,10 @@ câmera ─► capture.py ─► app/avaliador.py ──────────
 | `avaliador.py` | **motor da avaliação**: recebe cada quadro e decide tudo (sem interface) |
 | `janela.py` | janela principal e a navegação entre as telas |
 | `tema.py` / `formato.py` | cores, botões, rótulos / números e datas em português |
+| `icones.py` | ícones desenhados em SVG |
 | `simulacao.py` | mão simulada (`--sim`) |
 | `telas/` | uma tela por arquivo: pacientes, ficha, avaliação, relatório, configurações, ajuda |
-| `componentes/` | partes das telas: palco 3D, painel do dedo (`painel.py`), peças pequenas como réguas, barras e abas (`pecas.py`), mapa da evolução (`mapa.py`), gráfico, barra do topo, dicas, diálogos |
+| `componentes/` | partes das telas: palco 3D, mão 3D com pele (`mao3d.py`, modelo MANO), painel do dedo (`painel.py`), peças pequenas como réguas, barras e abas (`pecas.py`), mapa da evolução (`mapa.py`), gráfico, barra do topo, dicas, diálogos |
 | `dados/` | banco, configurações, resultados, interpretação, PDF, exportação, recálculo |
 
 **Testes** — pasta `tests/`: `testar.py` (roda todos os testes), `test_*.py` e
@@ -74,7 +76,7 @@ mostra a linha do tempo) e `instalar_mano.py` (usado pelo `Instalar mao 3D.bat`)
 
 ## Como acrescentar uma medida nova
 
-1. Calcule em `kinematics.py` (por dedo) ou `medidas.py` (mão inteira), sem interface.
+1. Calcule em `nucleo/kinematics.py` (por dedo) ou `nucleo/medidas.py` (mão inteira), sem interface.
 2. Guarde no resultado em `app/dados/resultados.py` (o banco salva o dicionário inteiro).
 3. Mostre no painel (`app/componentes/painel.py`), na ficha ou no CSV, se quiser.
 4. Explique a medida em `app/glossario.py` (vale para a dica ao passar o mouse e para a Ajuda) e use `explain(widget, "chave")` onde ela aparece.

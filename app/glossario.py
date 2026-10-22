@@ -14,9 +14,9 @@ import textwrap
 
 from PyQt5 import QtCore
 
-import kinematics as kin
-import medidas
 from app.dados import interpretacao as interp
+from nucleo import kinematics as kin
+from nucleo import medidas
 
 _L, _T = kin.NORMAL_JOINT["index"], kin.NORMAL_JOINT["thumb"]
 _F = medidas.FUNCTIONAL_ROM

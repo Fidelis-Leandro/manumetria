@@ -6,7 +6,7 @@ Desenhados aqui mesmo (grade 24x24, traço 2 px, pontas arredondadas), então
 não dependem de pacote nem licença externa. "currentColor" é trocado pela
 cor pedida na hora de desenhar.
 
-    from icons import icon, pixmap
+    from app.icones import icon, pixmap
     botao.setIcon(icon("pause", "#e6edf3"))
     rotulo.setPixmap(pixmap("alert", "#ffb300", 16))
 """

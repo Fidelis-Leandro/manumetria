@@ -4,8 +4,8 @@ articulação. Mostra de relance qual articulação está atrasada."""
 
 from PyQt5 import QtCore, QtGui, QtWidgets
 
-import kinematics as kin
 from app.tema import *  # noqa: F401,F403
+from nucleo import kinematics as kin
 
 ROWS = [(f, i, name) for f in kin.FINGERS for i, (name, _) in enumerate(kin.JOINTS[f])]
 

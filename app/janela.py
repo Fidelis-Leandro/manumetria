@@ -16,7 +16,7 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 from app.componentes.dialogos import ConfirmDialog
 from app.dados import config as cfgmod
 from app.dados import interpretacao as interp
-from app.dados.banco import DB_PATH, ROOT, Banco
+from app.dados.banco import Banco
 from app.dados.exportacao import export_research
 from app.tema import APP_CSS
 from app.telas.ajuda import HelpScreen
@@ -25,6 +25,7 @@ from app.telas.configuracoes import SettingsScreen
 from app.telas.ficha import RecordScreen
 from app.telas.pacientes import PatientsScreen
 from app.telas.relatorio import ReportScreen
+from nucleo.caminhos import DB_PATH, REPORTS_DIR
 
 
 class AppWindow(QtWidgets.QMainWindow):
@@ -162,7 +163,7 @@ class AppWindow(QtWidgets.QMainWindow):
         """Exportação para pesquisa numa pasta nova (escolhida pelo usuário)."""
         if folder is None:
             base = QtWidgets.QFileDialog.getExistingDirectory(self, "Pasta para a exportação",
-                                                              os.path.join(ROOT, "relatorios"))
+                                                              REPORTS_DIR)
             if not base:
                 return None
             folder = os.path.join(base, datetime.datetime.now().strftime("exportacao_%Y%m%d_%H%M"))

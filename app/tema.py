@@ -11,8 +11,8 @@ nos dois, como uma área de vídeo: a imagem e a mão 3D mantêm o contraste.
 
 from PyQt5 import QtCore, QtGui, QtWidgets
 
-from icons import pixmap
 from app.dados import config as _config
+from app.icones import pixmap
 from app.formato import (age_from, date_labels, fmt_date, fmt_datetime, fmt_deg,  # noqa: F401
                          fmt_duration, fmt_num, fmt_pct)                          # (usados pelas telas)
 

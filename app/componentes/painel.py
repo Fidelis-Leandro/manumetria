@@ -3,12 +3,12 @@ inteira). As peças pequenas (réguas, barras, abas) ficam em pecas.py."""
 
 from PyQt5 import QtCore, QtWidgets
 
-import kinematics as kin
-import medidas
-from icons import pixmap
 from app.componentes.pecas import ArcBar, MetricCell, ProgressBar, RepBars, SegmentedTabs, StackedBar
 from app.glossario import explain, tip
+from app.icones import pixmap
 from app.tema import *  # noqa: F401,F403
+from nucleo import kinematics as kin
+from nucleo import medidas
 
 
 

@@ -16,7 +16,7 @@ saudável. Precisam de validação com goniômetro antes.
 
 import numpy as np
 
-import kinematics as kin
+from nucleo import kinematics as kin
 
 # -----------------------------------------------------------------------------
 # Arco funcional (Bain et al., J Hand Surg Eur 2015): faixa de flexão usada em

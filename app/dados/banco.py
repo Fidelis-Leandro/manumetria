@@ -11,9 +11,7 @@ import json
 import os
 import sqlite3
 
-ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-DATA_DIR = os.path.join(ROOT, "dados_locais")
-DB_PATH = os.path.join(DATA_DIR, "avaliacoes.sqlite")
+from nucleo.caminhos import DB_PATH, ROOT
 
 FIELDS = ["identificacao", "nascimento", "mao_dominante", "mao_avaliada", "condicao",
           "data_lesao", "profissional", "observacoes", "situacao", "data_alta"]

@@ -5,8 +5,8 @@ from PyQt5 import QtGui
 
 import pyqtgraph as pg
 
-import kinematics as kin
 from app.tema import *  # noqa: F401,F403
+from nucleo import kinematics as kin
 
 
 class TamChart(pg.PlotWidget):

@@ -15,10 +15,10 @@ import datetime
 
 import numpy as np
 
-import kinematics as kin
-import medidas
 from app.dados.resultados import mean_pct
 from app.formato import fmt_date
+from nucleo import kinematics as kin
+from nucleo import medidas
 
 MIN_PAIRS = 10                 # pares teste-reteste para estimar o erro
 TREND_MIN_SESSIONS = 4

@@ -29,7 +29,7 @@ import numpy as np
 import pyqtgraph.opengl as gl
 from pyqtgraph.opengl import shaders
 
-MANO_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets", "mano")
+from nucleo.caminhos import MANO_DIR
 SKIN_COLOR = (0.89, 0.70, 0.60, 1.0)
 
 # Shader próprio: o "shaded" do pyqtgraph tem luz fixa e fica escuro demais.

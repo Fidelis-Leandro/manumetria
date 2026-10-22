@@ -14,8 +14,6 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 
 import pyqtgraph as pg
 
-import kinematics as kin
-import medidas
 from app.componentes.cabecalho import ScreenHeader
 from app.componentes.dialogos import DIALOG_CSS, ConfirmDialog
 from app.componentes.mapa import EvolutionMap
@@ -23,8 +21,10 @@ from app.componentes.pecas import SegmentedTabs
 from app.dados import interpretacao as interp
 from app.dados.resultados import mean_pct, total_moves
 from app.glossario import explain_columns
-from app.tema import *  # noqa: F401,F403
 from app.telas.pacientes import PatientDialog, situation_text
+from app.tema import *  # noqa: F401,F403
+from nucleo import kinematics as kin
+from nucleo import medidas
 
 CHANGE_WORDS = {"melhora": "melhora real", "piora": "piora real", "estavel": "dentro do erro de medida",
                 None: None}
