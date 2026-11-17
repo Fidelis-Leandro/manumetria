@@ -24,8 +24,10 @@ from app.componentes.painel import DetailPanel
 from app.componentes.palco import Hand3D, StageToolbar, ViewStage
 from app.componentes.pecas import FingerChip
 from app.componentes.topo import CaptureQuality, TopBar
+from app.dados import config as cfgmod
 from app.glossario import explain
 from app.tema import *  # noqa: F401,F403
+from nucleo import filtros
 from nucleo import geometria
 from nucleo import kinematics as kin
 from nucleo import medidas
@@ -103,7 +105,11 @@ class EvaluationScreen(QtWidgets.QWidget):
         """Tela zerada para o paciente, ainda sem abrir a câmera (ex.: durante as dicas)."""
         self.stop()
         self.patient = patient or {}
-        self._reset(Avaliador())
+        # suavização escolhida em Configurações (vale para as avaliações novas): só na
+        # exibição ao vivo, ou também nas medidas se a caixa estiver marcada
+        cfg = cfgmod.load()
+        self._reset(Avaliador(filtro=cfg.get("suavizacao", filtros.PADRAO),
+                              nas_medidas=bool(cfg.get("suavizacao_medidas", False))))
 
     def start(self, patient):
         """Começa uma sessão nova para o paciente (abre a fonte)."""
@@ -126,7 +132,7 @@ class EvaluationScreen(QtWidgets.QWidget):
     def start_retest(self):
         """Reteste logo após a avaliação: medições novas, mesma gravação de pontos,
         mão pedida de novo e recalibrada. Usa a câmera já aberta."""
-        self._reset(Avaliador(retest=True, frames=self.av.frames))
+        self._reset(Avaliador(retest=True, frames=self.av.frames, filtro=self.av.filtro.reg))
         if self.source is not None:
             self.timer.start(TIMER_MS)
 
@@ -406,7 +412,7 @@ class EvaluationScreen(QtWidgets.QWidget):
             self._update_actions()
             self._refresh_panel(force=True)
         if av.phase == "avaliacao":
-            self.chart.update_data(av.session.history, now, self.selected)
+            self.chart.update_data(av.display_history, now, self.selected)   # suavizado (exibição)
             self._refresh_panel()
         state = passo.state
         if state in ("ok", "segurando"):
@@ -449,7 +455,8 @@ class EvaluationScreen(QtWidgets.QWidget):
             pct = trackers[f].percent_normal()
             chip.set_data(len(trackers[f].reps), GRADE_COLOR[kin.grade(pct)], pct)
         self.strong.setText(self._strong_text())
-        self.detail.show_tracker(trackers[self.selected], self.av.calibrated, self.av.hand_info(now))
+        self.detail.show_tracker(trackers[self.selected], self.av.calibrated, self.av.hand_info(now),
+                                 self._live(self.selected))
         self._color_hand()
 
     def _strong_text(self):
@@ -476,13 +483,18 @@ class EvaluationScreen(QtWidgets.QWidget):
             issues.append("O sistema ainda não tem retestes suficientes: faça o reteste no relatório.")
         return issues
 
+    def _live(self, finger):
+        """Ângulos de exibição do dedo agora (suavizados conforme Configurações)."""
+        return None if self.av.display is None else self.av.display[finger]
+
     def _joint_info(self, finger, joint):
         """Texto da dica ao passar o mouse sobre uma articulação da mão 3D."""
         tr = self.av.session.trackers[finger]
         k = tr.joint_names.index(joint)
         lines = [f"<b>{kin.NAME[finger]} · {joint}</b>"]
-        if tr.joints is not None:
-            lines.append(f"Agora: {fmt_num(tr.joints[k], 0)}°")
+        live = self._live(finger)
+        if live is not None:
+            lines.append(f"Agora: {fmt_num(live[k], 0)}°")
         if tr.max_joints is not None:
             lines.append(f"Flexão máxima: {fmt_num(tr.max_joints[k], 0)}° "
                          f"(normal {fmt_num(tr.normal_joints[k], 0)}°)")

@@ -80,7 +80,7 @@ check("déficit de extensão da PIP ~20° (o dedo nunca passou de 20°)", abs(d[
       f"(MCP/PIP/DIP = {np.round(d, 1)})")
 check("arco da PIP ~40° (20° -> 60°)", abs(arc[1] - 40) < 3, f"(arcos = {np.round(arc, 1)})")
 exp_active = (np.array([0.6, 1, 0.7]) * 60).sum() - (np.array([0.6, 1, 0.7]) * 20).sum()
-# máx e mín vêm do sinal cru (sem suavização): incluem o tremor nos dois
+# máx e mín vêm dos dados brutos (sem suavização): incluem o tremor nos dois
 # extremos, ~1-3° a mais por articulação -> tolerância de 12°
 check(f"TAM ativo = flexão máx - déficit (~{exp_active:.0f}°, + tremor nos extremos)",
       abs(tr.active_tam() - exp_active) < 12, f"(medido {tr.active_tam():.0f}°)")

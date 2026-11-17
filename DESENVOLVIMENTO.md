@@ -16,6 +16,7 @@ e a instalação estão no README.md.
 
 - Pacientes fictícios de demonstração (EX-001, João e Maria): `.venv\Scripts\python.exe tools\criar_demonstracao.py`
 - Todos os testes automáticos: `.venv\Scripts\python.exe tests\testar.py`
+- Uma gravação com outro filtro: `.venv\Scripts\python.exe tools\analisar_gravacao.py ARQUIVO.npz --filtro kalman --nas-medidas`
 
 ## Onde ficam os dados
 
@@ -34,9 +35,11 @@ O caminho de um quadro da câmera até a tela:
 ```
 câmera ─► nucleo/capture.py ─► app/avaliador.py ───────► app/telas/avaliacao.py (mostra)
                                 (fases, calibração,        │
-                                 estabilizador, medidas)    ▼ ao encerrar
+                                 estabilizador, filtros,    │
+                                 medidas)                   ▼ ao encerrar
                                 usa: nucleo/kinematics.py  resultados (dicionário)
                                      nucleo/stabilizer.py    ├─► app/dados/banco.py (salva)
+                                     nucleo/filtros.py       │
                                      nucleo/medidas.py       ├─► app/dados/documento.py (PDF)
                                                              └─► app/dados/interpretacao.py (ficha)
 ```
@@ -50,6 +53,7 @@ As dependências vão num sentido só: `app/` usa `nucleo/`, e `nucleo/` nunca i
 | `kinematics.py` | ângulos das articulações, TAM, repetições, velocidade, suavidade, calibração |
 | `medidas.py` | arco funcional, Strickland, polpa-palma, abertura dos dedos, tremor, confiabilidade |
 | `stabilizer.py` | segura falhas curtas do MediaPipe e fixa o lado da mão |
+| `filtros.py` | suavização dos ângulos: EMA, Kalman e EMA + Kalman, com os parâmetros do artigo EMA × Kalman |
 | `geometria.py` | pontos da mão, mão sintética (simulação/testes), conversão para o 3D |
 | `capture.py` | webcam + MediaPipe, arquivos de pontos (gravar, ler, reproduzir) |
 | `caminhos.py` | todas as pastas e arquivos do projeto (dados locais, relatórios, assets, modelos) |
@@ -100,10 +104,24 @@ O banco se atualiza sozinho ao abrir: colunas novas são acrescentadas em `Banco
 
 ## Combinados do projeto
 
-- Os números mostrados são **crus**: nada de filtro de suavização na tela (não há
-  EMA nem Kalman). A média de 8 quadros serve só para o contador de repetições
-  decidir, e a derivada de Savitzky–Golay (5 pontos) só para a velocidade de pico
-  e a suavidade (SPARC).
+- As **medidas usam os dados brutos**. Suavização (desde a 1.1.0, `nucleo/filtros.py`,
+  padrão EMA + Kalman com os parâmetros do artigo EMA × Kalman): por padrão vale SÓ
+  PARA A EXIBIÇÃO AO VIVO. O `Avaliador` aplica o filtro logo depois do cálculo e do
+  descarte e, no mesmo quadro (`_update_session`), entrega à `Session` os dados brutos
+  e guarda os suavizados em `av.display` (valor "Agora", dica da mão 3D) e
+  `av.display_history` (gráfico do TAM). Com "Aplicar a suavização também nas medidas"
+  (`suavizacao_medidas` em Configurações; `nas_medidas` no registro), a `Session`
+  recebe os suavizados, como no pipeline do artigo. Motivo do padrão: o filtro achata
+  os picos (na gravação de referência, -10 pp no TAM ativo do indicador, até -61% na
+  velocidade de pico e um falso "fora do arco funcional"). Com o padrão, os resultados
+  são idênticos aos da v1.0.0 (há um teste que compara com a tag). Calibração, tremor
+  e as medidas por pontos (abertura, polpa-palma) usam sempre os dados brutos. O filtro
+  só usa a ordem dos quadros (nada de relógio): o recálculo tem de dar o mesmo resultado
+  do ao vivo. Cada avaliação guarda `resultados["filtro"]` (modo, parâmetros e
+  `nas_medidas`); o recálculo usa esse registro (sem registro: "Desligada"; sem
+  `nas_medidas`: dados brutos). Os parâmetros do artigo não devem ser mudados sem um
+  motivo documentado. A média de 8 quadros continua só para o contador decidir, e a
+  derivada de Savitzky–Golay (5 pontos) só para a velocidade de pico e a suavidade (SPARC).
 - Interpretação por regras explícitas, com "sugestivo de": apoio à decisão, não diagnóstico.
 - Textos da interface em português, sem emojis.
 - A mão 3D é gerada pelo próprio código (sem modelo de terceiros). A cor de cada

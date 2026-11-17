@@ -1,9 +1,10 @@
 """Configurações: relatório (instituição, logotipo, título, profissional padrão),
-tema da interface e se as dicas da avaliação já foram vistas."""
+tema da interface, suavização do sinal e se as dicas da avaliação já foram vistas."""
 
 import json
 import os
 
+from nucleo import filtros
 from nucleo.caminhos import ASSETS_DIR, CONFIG_PATH, DATA_DIR, ROOT
 
 LOGO_DIR = ASSETS_DIR     # para onde vai o logotipo escolhido em Configurações
@@ -15,6 +16,8 @@ DEFAULTS = {
     "tema": "escuro",           # "escuro" ou "claro" (lido ao abrir o programa)
     "escala": 1.0,              # tamanho da interface: 1.0, 1.15 ou 1.3 (idem)
     "dicas_vistas": False,      # as dicas da avaliação já apareceram uma vez
+    "suavizacao": filtros.PADRAO,   # filtro dos ângulos nas avaliações novas (nucleo/filtros.py)
+    "suavizacao_medidas": False,    # True: o filtro entra também nas medidas (pipeline do artigo)
 }
 
 

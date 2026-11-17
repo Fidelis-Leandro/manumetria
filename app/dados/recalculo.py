@@ -5,6 +5,11 @@ cálculo atual (ex.: depois de corrigir uma conta ou acrescentar uma medida).
 Só as avaliações com pontos gravados (salvas a partir de 15/10/2026) podem ser
 recalculadas. Data, duração, fonte e observações não mudam; os resultados
 anteriores ficam guardados dentro da avaliação, em "original".
+
+Cada avaliação é recalculada com o filtro de suavização registrado nela
+("filtro", com "nas_medidas"): as medidas usam os dados brutos, a não ser que
+o filtro tenha sido aplicado também nas medidas. As que não têm registro
+(anteriores aos filtros) são tratadas como "Desligada" e não mudam.
 """
 
 import datetime
@@ -13,6 +18,7 @@ import os
 from app.avaliador import analisar
 from app.dados.resultados import mean_pct, retest_summary
 from nucleo import capture
+from nucleo import filtros
 from nucleo.caminhos import ROOT
 
 KEEP = ("inicio", "duracao_s", "fonte", "pontos")   # dados da sessão, não do cálculo
@@ -47,13 +53,16 @@ def preparar(db, progress=None):
 
 def _recalculate(old, rows):
     main = [r for r in rows if not r["fase"].startswith("reteste_")]
-    new = analisar(main).results(main[-1]["t"], old.get("fonte", ""))
+    reg = filtros.registro_de(old.get("filtro"))     # o filtro usado na própria avaliação
+    new = analisar(main, filtro=reg).results(main[-1]["t"], old.get("fonte", ""))
     for key in KEEP:
         new[key] = old.get(key)
+    if "filtro" not in old:                          # sem registro: fica como estava
+        new.pop("filtro", None)
     if old.get("reteste"):
         again = [r for r in rows if r["fase"].startswith("reteste_")]
         if again:
-            rt = retest_summary(analisar(again, retest=True).results(again[-1]["t"], ""))
+            rt = retest_summary(analisar(again, retest=True, filtro=reg).results(again[-1]["t"], ""))
             rt["inicio"] = old["reteste"].get("inicio", rt["inicio"])
             new["reteste"] = rt
     new["original"] = old.get("original") or {k: v for k, v in old.items() if k != "original"}

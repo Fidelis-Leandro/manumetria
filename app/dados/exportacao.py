@@ -9,7 +9,8 @@ import csv
 import datetime
 import os
 
-from app.dados.resultados import CALIBRATION_NAMES, CSV_HEADER, SLOTS, csv_num, finger_row
+from app.dados.resultados import (CALIBRATION_NAMES, CSV_HEADER, SLOTS, csv_num, finger_row,
+                                   smoothing_in_measures, smoothing_text)
 from app.formato import age_from
 from nucleo import kinematics as kin
 
@@ -28,6 +29,12 @@ SESSION_COLUMNS = [
     ("duracao_s", "Tempo de avaliação (sem pausas)", "s"),
     ("mao_medida", "Mão detectada pela câmera", ""),
     ("calibracao", "Como a sensibilidade foi obtida", ""),
+    ("suavizacao", "Filtro de suavização dos ângulos na avaliação (Desligada, EMA, Kalman ou EMA + Kalman) e "
+                   "onde foi aplicado: só na exibição ao vivo (medidas com os dados brutos) ou também nas "
+                   "medidas, com os parâmetros (alfa do EMA; Q, R e covariância inicial P0 do Kalman). "
+                   "Avaliações anteriores aos filtros: Desligada", ""),
+    ("suavizacao_nas_medidas", "O filtro entrou nas medidas desta linha (sim) ou elas usam os dados brutos "
+                               "(nao)", "sim/nao"),
     ("confiabilidade", "Confiabilidade da captura: alta, media ou baixa", ""),
     ("confiabilidade_motivos", "Motivos quando não é alta", ""),
     ("quadros_validos_pct", "Quadros da avaliação com medida válida", "%"),
@@ -120,6 +127,7 @@ def export_research(db, folder):
                        p.get("mao_dominante") or "", p.get("mao_avaliada") or "", p.get("condicao") or "",
                        (day - datetime.date.fromisoformat(injury[:10])).days if injury else "",
                        s["id"], res["inicio"], res["duracao_s"], HAND.get(res["mao"], ""), calib,
+                       smoothing_text(res), "sim" if smoothing_in_measures(res) else "nao",
                        rel.get("nivel", ""), " / ".join(rel.get("motivos", [])),
                        csv_num((rel.get("detalhes") or {}).get("validos_pct"), 1), res["descartados"],
                        "sim" if res.get("reteste") else "nao", res.get("pontos") or "",

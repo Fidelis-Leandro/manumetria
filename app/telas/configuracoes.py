@@ -1,5 +1,5 @@
-"""Configurações: relatório (instituição, título, logotipo, profissional padrão) e
-interface (tema escuro ou claro).
+"""Configurações: relatório (instituição, título, logotipo, profissional padrão),
+interface (tema escuro ou claro) e medição (suavização do sinal: nucleo/filtros.py).
 
 O logotipo aparece apenas no relatório final (PDF); aqui só o nome e o tamanho do arquivo.
 O tema é lido ao abrir o programa: ao trocar, oferece reiniciar."""
@@ -15,7 +15,9 @@ from app.componentes.dialogos import DIALOG_CSS, ConfirmDialog
 from app.dados import config as cfgmod
 from app.dados import recalculo
 from app.dados.documento import LOGO_H
+from app.glossario import explain
 from app.tema import *  # noqa: F401,F403
+from nucleo import filtros
 
 
 def _section(text):
@@ -39,7 +41,9 @@ class RecalcDialog(QtWidgets.QDialog):
         v.addWidget(label("Recalcular avaliações", 17, TEXT, bold=True))
         text = label("Passa os pontos da mão gravados em cada avaliação pelo cálculo atual do sistema. "
                      "Data, duração e observações não mudam, e os resultados anteriores ficam guardados "
-                     "na própria avaliação. Avaliações salvas antes de 15/10/2026 não têm pontos gravados.",
+                     "na própria avaliação. Cada avaliação usa o filtro de suavização registrado nela "
+                     "(sem registro: Desligada). Avaliações salvas antes de 15/10/2026 não têm pontos "
+                     "gravados.",
                      13, MUTED)
         text.setWordWrap(True)
         v.addWidget(text)
@@ -102,7 +106,7 @@ class SettingsScreen(QtWidgets.QWidget):
         v.setContentsMargins(0, 0, 0, 0)
         v.setSpacing(0)
         self.header = ScreenHeader("Configurações", back_text="Pacientes")
-        self.header.subtitle.setText("Relatório em PDF e aparência da interface")
+        self.header.subtitle.setText("Relatório em PDF, aparência da interface e medição")
         self.header.back.connect(self.back.emit)
         v.addWidget(self.header)
 
@@ -180,6 +184,43 @@ class SettingsScreen(QtWidgets.QWidget):
         theme_hint.setWordWrap(True)
         f.addRow("", theme_hint)
 
+        line_m = QtWidgets.QFrame()
+        line_m.setFixedHeight(1)
+        line_m.setStyleSheet(f"background: {BORDER};")
+        f.addRow(line_m)
+        f.addRow(_section("Medição"))
+        smooth_row = QtWidgets.QHBoxLayout()
+        smooth_row.setSpacing(6)
+        smooth_group = QtWidgets.QButtonGroup(self)
+        smooth_group.setExclusive(True)
+        self.smooth_buttons = {}
+        for key, text in filtros.MODOS.items():
+            b = button(text, None, "quiet", checkable=True)
+            b.setMinimumWidth(96)
+            smooth_group.addButton(b)
+            smooth_row.addWidget(b)
+            self.smooth_buttons[key] = b
+        smooth_row.addStretch()
+        smooth_label = label("Suavização do sinal", 13, MUTED)
+        explain(smooth_label, "suavizacao")
+        f.addRow(smooth_label, smooth_row)
+        self.smooth_measures = QtWidgets.QCheckBox(
+            "Aplicar a suavização também nas medidas (como no pipeline do artigo)")
+        self.smooth_measures.setStyleSheet(f"QCheckBox {{ color: {TEXT}; font-size: 13px; spacing: 8px; }}")
+        explain(self.smooth_measures, "suavizacao_medidas")
+        f.addRow("", self.smooth_measures)
+        smooth_hint = label(
+            "Filtro aplicado aos ângulos de cada articulação, como no artigo EMA × Kalman: reduz a tremedeira "
+            "da câmera, mas atrasa um pouco o sinal (EMA + Kalman: cerca de "
+            f"{fmt_num(filtros.atraso_quadros(filtros.registro(filtros.CASCATA)), 0)} quadros). Padrão: "
+            f"{filtros.MODOS[filtros.PADRAO]} só na exibição ao vivo (valor \"Agora\", gráfico do TAM e dica "
+            "da mão 3D); as medidas da avaliação usam os dados brutos. Com a caixa marcada, o filtro entra "
+            "também nas medidas e achata os picos (menos flexão máxima, velocidade de pico e repetições). "
+            "Vale para as avaliações novas; cada avaliação guarda o filtro usado, e o recálculo usa sempre "
+            "o da própria avaliação.", 12, MUTED)
+        smooth_hint.setWordWrap(True)
+        f.addRow("", smooth_hint)
+
         actions = QtWidgets.QHBoxLayout()
         self.status = label("", 12, GOOD)
         actions.addWidget(self.status)
@@ -226,6 +267,9 @@ class SettingsScreen(QtWidgets.QWidget):
         self.theme_buttons.get(self.cfg.get("tema"), self.theme_buttons["escuro"]).setChecked(True)
         scale = min(SCALES, key=lambda s: abs(s - float(self.cfg.get("escala", 1.0))))
         self.scale_buttons[scale].setChecked(True)
+        smooth = self.cfg.get("suavizacao")
+        self.smooth_buttons.get(smooth, self.smooth_buttons[filtros.PADRAO]).setChecked(True)
+        self.smooth_measures.setChecked(bool(self.cfg.get("suavizacao_medidas", False)))
         self.status.setText("")
         self._show_logo()
 
@@ -258,9 +302,11 @@ class SettingsScreen(QtWidgets.QWidget):
     def save(self):
         theme = next(k for k, b in self.theme_buttons.items() if b.isChecked())
         scale = next(k for k, b in self.scale_buttons.items() if b.isChecked())
+        smooth = next(k for k, b in self.smooth_buttons.items() if b.isChecked())
         self.cfg.update(instituicao=self.institution.text().strip() or cfgmod.DEFAULTS["instituicao"],
                         titulo=self.title.text().strip() or cfgmod.DEFAULTS["titulo"],
-                        profissional_padrao=self.professional.text().strip(), tema=theme, escala=scale)
+                        profissional_padrao=self.professional.text().strip(), tema=theme, escala=scale,
+                        suavizacao=smooth, suavizacao_medidas=self.smooth_measures.isChecked())
         cfgmod.save(self.cfg)
         self.saved.emit(self.cfg)
         if theme == THEME and abs(scale - SCALE) < 0.01:   # aparência em uso não mudou

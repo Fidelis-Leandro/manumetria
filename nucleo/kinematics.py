@@ -12,6 +12,10 @@ Tudo aqui é numpy puro e não depende da interface:
     regularidade, variação de amplitude e de velocidade), independência em
     relação aos outros dedos e contribuição de cada articulação
   - calibração: mede quanto cada dedo "treme" parado -> sensibilidade
+
+Os ângulos que chegam à Session são os dados brutos; só com a opção "aplicar a
+suavização também nas medidas" já passaram pelo filtro (nucleo/filtros.py,
+aplicado em app/avaliador.py). A calibração recebe sempre os dados brutos.
 """
 
 from collections import deque
@@ -61,7 +65,7 @@ SENS_FACTOR = 3.0
 SENS_MIN, SENS_MAX, SENS_DEFAULT = 2.0, 30.0, 5.0
 
 # O detector de repetições olha a média dos últimos N frames do TAM (só
-# para contar; os números exibidos continuam crus). Sem isso, o tremor faz o
+# para contar; os números exibidos não passam por essa média). Sem isso, o tremor faz o
 # "vale" cair até o extremo do ruído e conta repetições com a mão parada.
 # Ajustado na simulação: 8 frames + fator 3 = zero repetições falsas em
 # 3 x 2 min de mão parada (5 frames ainda contava algumas).
@@ -96,7 +100,8 @@ CONSISTENT_CV, MODERATE_EFFORT_CV = 0.10, 0.20
 # do normal da literatura: um paciente com 45% do normal também chega lá.
 STRONG_MARGIN = 0.10
 
-# Velocidade de pico e suavidade usam o TAM CRU de cada repetição, reamostrado
+# Velocidade de pico e suavidade usam o TAM de cada repetição (sem a média do
+# detector; suavizado só com a suavização aplicada também nas medidas), reamostrado
 # em grade uniforme. Abaixo desta amplitude o tremor domina o sinal e as duas
 # medidas perdem o sentido.
 SIGNAL_FS = 30.0
@@ -109,7 +114,7 @@ def is_open_hand(angles):
 
 # Ângulo fora desta faixa não é da mão, é erro do MediaPipe (pontos trocados
 # ou escondidos ao girar a mão). O frame inteiro é DESCARTADO, como uma falha
-# de detecção; nenhum valor é corrigido ou suavizado. Na gravação real, 8 de
+# de detecção; nenhum valor é corrigido, e o quadro não entra na suavização. Na gravação real, 8 de
 # 1.550 frames (todos num giro rápido da mão) davam até 155° de flexão e -142°
 # de "hiperextensão" e estragavam máximos e mínimos da sessão.
 PLAUSIBLE_RANGE = (-60.0, 130.0)
@@ -201,7 +206,7 @@ def uniform(t, x, fs=SIGNAL_FS):
 
 def derivative(x, fs=SIGNAL_FS):
     """Derivada por mínimos quadrados em 5 pontos (Savitzky-Golay, 1ª ordem).
-    Só entra no CÁLCULO da velocidade: nada exibido é suavizado. A diferença
+    Só entra no CÁLCULO da velocidade (não muda os ângulos exibidos). A diferença
     entre quadros vizinhos transformaria o tremor de ~1° do MediaPipe em ~40°/s."""
     x = np.asarray(x, dtype=float)
     d = np.gradient(x) * fs
@@ -257,7 +262,7 @@ class Rep:
     t_ext_end: float = None       #   (preenchida quando o próximo vale é achado)
     coupling: dict = field(default=None)   # {outro dedo: quanto se moveu junto (0..1,5)}
     independence: float = None             # 1 - média do acoplamento (0..1)
-    peak_velocity: float = None            # maior velocidade na flexão (°/s), sinal cru
+    peak_velocity: float = None            # maior velocidade na flexão (°/s)
     sparc_flex: float = None               # suavidade da flexão
     sparc_ext: float = None                # suavidade da extensão (quando o vale seguinte chega)
 
@@ -299,7 +304,7 @@ class FingerTracker:
         self._mode = None          # None | "down" (procurando vale) | "up" (procurando pico)
         self._awaiting_ext = False # a última repetição espera o vale seguinte
         self._recent = deque(maxlen=DETECTOR_SMOOTH_FRAMES)
-        self._raw = deque(maxlen=900)   # (t, TAM cru) dos últimos ~30 s: velocidade e suavidade
+        self._raw = deque(maxlen=900)   # (t, TAM sem a média do detector), ~30 s: velocidade e suavidade
 
     def update(self, joints, t=None):
         """joints = flexões das articulações deste dedo, ou None (sem mão).
@@ -371,9 +376,9 @@ class FingerTracker:
         return rep
 
     def _segment(self, t0, t1, rising):
-        """TAM cru (grade uniforme) de um movimento: do extremo perto de t0 ao
+        """TAM (sem a média do detector, em grade uniforme) de um movimento: do extremo perto de t0 ao
         extremo perto de t1. t0/t1 vêm do detector, que olha a média dos últimos
-        quadros e por isso atrasa ~0,1 s: o extremo cru é procurado um pouco antes."""
+        quadros e por isso atrasa ~0,1 s: o extremo nos dados brutos é procurado um pouco antes."""
         if t0 is None or t1 is None or t1 - t0 < 0.1:
             return None
         pts = [(tt, v) for tt, v in self._raw if t0 - 0.4 <= tt <= t1 + 0.1]

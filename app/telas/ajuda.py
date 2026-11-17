@@ -46,6 +46,7 @@ SECTIONS = [
     ("padrao", "Padrão do movimento (aba Padrão)", ["independencia", "acompanhamento", "contribuicao"]),
     ("mao", "Mão inteira e captura (aba Mão e barra do topo)",
      ["abertura_dedos", "abertura_polegar", "tremor", "confiabilidade", "qualidade_captura", "distancia", "tam_ao_vivo"]),
+    ("sinal", "Tratamento do sinal", ["suavizacao", "suavizacao_medidas"]),
     ("evolucao", "Evolução e interpretação (ficha e lista de pacientes)",
      ["reteste", "erro_medida", "mudanca_real", "faixa_erro", "tendencia", "plato", "resumo", "mapa", "semanas",
       "situacao", "ultima_avaliacao"]),

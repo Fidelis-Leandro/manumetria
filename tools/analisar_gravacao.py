@@ -9,6 +9,11 @@ passando-o pelo mesmo motor da tela de avaliação (app/avaliador.py):
   4) resultado final por dedo
 
     .venv\\Scripts\\python.exe tools\\analisar_gravacao.py ARQUIVO.npz
+    .venv\\Scripts\\python.exe tools\\analisar_gravacao.py ARQUIVO.npz --filtro desligada
+
+--filtro: suavização dos ângulos (desligada, ema, kalman, ema_kalman); sem ela,
+usa a escolhida em Configurações. --nas-medidas: aplica a suavização também nas
+medidas (sem a opção, como em Configurações; por padrão só na exibição).
 """
 
 import os
@@ -18,11 +23,25 @@ import numpy as np
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from app.avaliador import Avaliador  # noqa: E402
+from app.dados import config as cfgmod  # noqa: E402
 from nucleo import capture  # noqa: E402
+from nucleo import filtros  # noqa: E402
 from nucleo import kinematics as kin  # noqa: E402
 
-if len(sys.argv) < 2:
+args = sys.argv[1:]
+cfg = cfgmod.load()
+mode = cfg.get("suavizacao", filtros.PADRAO)
+in_measures = bool(cfg.get("suavizacao_medidas", False))
+if "--nas-medidas" in args:
+    in_measures = True
+    args.remove("--nas-medidas")
+if "--filtro" in args:
+    i = args.index("--filtro")
+    mode = args[i + 1] if i + 1 < len(args) else ""
+    del args[i:i + 2]
+if not args or mode not in filtros.MODOS:
     sys.exit(__doc__)
+sys.argv[1:] = args
 rows = capture.load_recording(sys.argv[1])
 t = np.array([r["t"] for r in rows])
 t0, dur = t[0], t[-1] - t[0]
@@ -43,7 +62,9 @@ print(f"  falhas de detecção: {len(gaps)} | até 0,4 s: {sum(g <= 0.4 for g in
       f"maior: {max(gaps, default=0):.2f} s")
 
 # o mesmo motor da tela, guardando o que acontece em cada quadro
-av = Avaliador()
+av = Avaliador(filtro=mode, nas_medidas=in_measures)
+print(f"  suavização: {filtros.MODOS[mode]} " + ("(também nas medidas)" if av.filter_measures
+                                                  else "(só na exibição; medidas com os dados brutos)"))
 timeline = []                  # (t, fase, estado, TAM dos dedos ou None, vista ou None, repetições novas)
 for r in rows:
     before = sum(len(tr.reps) for tr in av.session.trackers.values())

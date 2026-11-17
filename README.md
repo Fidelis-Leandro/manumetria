@@ -69,7 +69,7 @@ flexores, zona II) ou da **Maria Souza (fictícia)** (fratura do rádio distal, 
 | **Ficha** | dados do paciente, resumo por regras, lista de avaliações, gráfico de evolução (datas ou semanas desde a lesão), mapa da evolução, comparação entre avaliações, exclusão de avaliação |
 | **Avaliação** | câmera + mão 3D com as articulações coloridas, contagem de movimentos por dedo, medidas ao vivo, aviso de mão de lado / longe / perto, qualidade da captura, contador de repetições fortes, conferência ao encerrar |
 | **Relatório** | resultado por dedo, observações do profissional, reteste, PDF e CSV |
-| **Configurações** | instituição e logotipo do PDF, tema claro/escuro, tamanho da interface, recálculo de avaliações antigas |
+| **Configurações** | instituição e logotipo do PDF, tema claro/escuro, tamanho da interface, suavização do sinal (Desligada / EMA / Kalman / EMA + Kalman; só na exibição ou também nas medidas), recálculo de avaliações antigas |
 | **Ajuda** | como avaliar, como medir bem, glossário de todas as medidas, limites do sistema |
 
 **Medidas** (detalhes na tela Ajuda): flexão de cada articulação, TAM e TAM ativo (% do normal), déficit de
@@ -81,17 +81,56 @@ avaliação, erro de medida por teste–reteste (MDC), mudança real, tendência
 
 ### Tratamento do sinal
 
-Os ângulos exibidos são calculados quadro a quadro a partir dos pontos do MediaPipe, **sem filtro de
-suavização** (não há filtro de média móvel exponencial nem de Kalman). O que o código faz:
+Os ângulos são calculados quadro a quadro a partir dos pontos do MediaPipe. O que o código faz, nesta ordem:
 
 - **descarta** quadros com ângulos fisicamente impossíveis (fora de −60° a 130°) e quadros com a mão de
   lado (palma a mais de 60° da frente), como se fossem falhas de detecção;
 - em falhas curtas de detecção (até 0,4 s), **mantém a última pose** e não atualiza as medidas; o lado da
   mão (direita/esquerda) é fixado na calibração;
+- **suaviza a exibição ao vivo**: os ângulos de cada articulação (um filtro independente por articulação)
+  passam pelos mesmos filtros e parâmetros do artigo EMA × Kalman (Fidelis, ERAMIA-RS 2026; implementação
+  de referência no repositório `computer-vision-based-hand-kinematic-assessment`), escolhidos em
+  Configurações:
+
+  | Modo | Equações | Parâmetros | Atraso médio |
+  |---|---|---|---|
+  | Desligada | dados brutos | — | 0 |
+  | EMA | y = α·z + (1 − α)·y anterior | α = 0,30 | ≈ 2,3 quadros |
+  | Kalman | posição constante: P⁻ = P + Q; K = P⁻/(P⁻ + R); x = x + K·(z − x); P = (1 − K)·P⁻ | Q = 0,01; R = 0,10; P₀ = 1; x₀ = 1º valor | ≈ 2,7 quadros (K estável ≈ 0,27) |
+  | **EMA + Kalman** (padrão, como no aplicativo do artigo) | EMA e depois Kalman | os dois acima | ≈ 5,0 quadros (≈ 0,17 s a 30 quadros/s) |
+
+  **Por padrão, o filtro vale só para a exibição ao vivo** (valor "Agora" das articulações, dica da mão
+  3D e gráfico "TAM nos últimos 20 s"). **Todas as medidas da sessão usam os dados brutos** (máximos,
+  mínimos, déficits, TAM ativo, % do normal, repetições, velocidades, SPARC, independência, PDF e CSV),
+  exatamente como na versão 1.0.0. Motivo: a suavização **achata os picos**. Na gravação de referência
+  (mão saudável), aplicando EMA + Kalman também nas medidas:
+
+  | Dedo | Repetições | TAM ativo (% do normal) | Velocidade de pico (°/s) |
+  |---|---|---|---|
+  | Polegar | 33 → 21 | 66 → 62 | 343 → 134 (−61%) |
+  | Indicador | 24 → 17 | 99 → 89 | 319 → 179 (−44%) |
+  | Médio | 27 → 21 | 104 → 95 | 276 → 165 (−40%) |
+  | Anelar | 25 → 21 | 107 → 97 | 281 → 191 (−32%) |
+  | Mínimo | 24 → 17 | 105 → 97 | 340 → 289 (−15%) |
+
+  (dados brutos → suavizado nas medidas). A MCP do indicador cai de 74,6° para 65,3° e a mão saudável
+  passa a ser apontada como "fora do arco funcional" (71°), uma limitação falsa
+  ([comparação](docs/filtros_comparacao.png)).
+
+  Para reproduzir o pipeline do artigo, marque em Configurações **"Aplicar a suavização também nas
+  medidas"**: o filtro entra antes do contador de repetições e de todas as medidas. O filtro só usa a
+  sequência de quadros (não o relógio), então recalcular a partir dos pontos gravados dá o mesmo resultado
+  da avaliação ao vivo. Quadros descartados ou "segurando" não entram no filtro; perda longa da mão, mão de
+  lado, pausa, recalibração e nova avaliação o zeram. Calibração, tremor, abertura dos dedos e
+  polpa–palma usam sempre os dados brutos. Cada avaliação registra o filtro e se ele entrou nas medidas
+  (PDF, CSV e dicionário de dados), e "Recalcular avaliações" usa sempre esse registro (sem registro:
+  Desligada; sem a indicação de medidas: dados brutos);
 - o **contador de repetições** decide sobre a média dos últimos 8 quadros do TAM, com histerese igual à
-  sensibilidade medida na calibração (3 × o tremor parado); os valores mostrados continuam crus;
+  sensibilidade medida na calibração (3 × o tremor parado, medido nos dados brutos); essa média não muda os
+  valores mostrados;
 - a **velocidade de pico** e a **suavidade** (SPARC) usam uma derivada por mínimos quadrados em 5 pontos
-  (Savitzky–Golay de 1ª ordem) sobre o TAM cru de cada repetição, reamostrado em grade uniforme de 30 Hz.
+  (Savitzky–Golay de 1ª ordem) sobre o TAM de cada repetição (dados brutos; suavizado só com a opção "também nas medidas"),
+  reamostrado em grade uniforme de 30 Hz.
 
 ### Limites
 
@@ -114,7 +153,7 @@ suavização** (não há filtro de média móvel exponencial nem de Kalman). O q
 
 ```
 sistema.py               ponto de entrada (python sistema.py --help mostra as opções)
-nucleo/                  cálculo, sem interface (numpy): câmera, cinemática, medidas, estabilizador
+nucleo/                  cálculo, sem interface (numpy): câmera, cinemática, medidas, estabilizador, filtros
 app/                     interface (PyQt5): janela, telas, componentes, mão 3D, banco e relatórios
   telas/                 uma tela por arquivo (pacientes, ficha, avaliação, relatório, configurações, ajuda)
   componentes/           partes das telas (palco 3D, mão 3D procedural em mao3d.py, painéis, gráficos)

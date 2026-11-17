@@ -15,12 +15,16 @@ import textwrap
 from PyQt5 import QtCore
 
 from app.dados import interpretacao as interp
+from nucleo import filtros
 from nucleo import kinematics as kin
 from nucleo import medidas
 
 _L, _T = kin.NORMAL_JOINT["index"], kin.NORMAL_JOINT["thumb"]
 _F = medidas.FUNCTIONAL_ROM
 _PCT = lambda x: f"{x * 100:.0f}%"
+_BR = lambda x, d=1: f"{x:.{d}f}".replace(".", ",")
+_LAG = {m: filtros.atraso_quadros(filtros.registro(m)) for m in (filtros.EMA_MODO, filtros.KALMAN_MODO,
+                                                                 filtros.CASCATA)}
 
 TERMS = {
     # ------------------------------------------------------------ dedo
@@ -30,11 +34,14 @@ TERMS = {
                "do dedo faz o papel do metacarpo (o MediaPipe não marca a base do metacarpo). Quadros com "
                f"ângulo impossível (fora de {kin.PLAUSIBLE_RANGE[0]:.0f}° a {kin.PLAUSIBLE_RANGE[1]:.0f}°) "
                "são descartados."),
-    "agora": ("Agora", "Flexão da articulação neste momento.", ""),
+    "agora": ("Agora", "Flexão da articulação neste momento, suavizada para a exibição (Configurações).",
+              "Mínima, máxima e as outras medidas usam os dados brutos, a não ser com a suavização "
+              "aplicada também nas medidas."),
     "min": ("Mínima", "Menor flexão da sessão, ou seja, a maior extensão. Negativo = hiperextensão.", ""),
     "max": ("Máxima", "Maior flexão da sessão.", ""),
     "arco": ("Arco de movimento", "Flexão máxima menos flexão mínima: quanto a articulação percorreu.", ""),
-    "tam_agora": ("TAM agora", "Soma das flexões das articulações do dedo neste instante.", ""),
+    "tam_agora": ("TAM agora", "Soma das flexões das articulações do dedo neste instante (suavizada para a "
+                               "exibição).", ""),
     "tam_ativo": ("TAM ativo",
                   "Soma das flexões máximas menos a soma dos déficits de extensão do dedo, como na "
                   "goniometria.",
@@ -141,9 +148,34 @@ TERMS = {
                   "Aviso quando a mão fica longe demais (o MediaPipe erra mais os ângulos) ou perto "
                   "demais (os dedos saem da imagem ao abrir). O ideal é cerca de 50 cm.",
                   "Medido pelo tamanho da mão na imagem; só avisa se durar meio segundo."),
+    "suavizacao": ("Suavização do sinal",
+                   "Filtro que tira a tremedeira da câmera dos ângulos de cada articulação. Por padrão vale "
+                   "só para o que aparece ao vivo (valor Agora, gráfico do TAM): as medidas usam os dados brutos.",
+                   f"EMA (média móvel exponencial): cada valor novo entra com peso "
+                   f"{_BR(filtros.EMA_ALPHA, 2)} e o anterior com {_BR(1 - filtros.EMA_ALPHA, 2)}; atraso médio "
+                   f"de ~{_BR(_LAG['ema'])} quadros. Kalman: estima o ângulo verdadeiro pesando a medida nova "
+                   f"contra a estimativa anterior (Q = {_BR(filtros.KALMAN_Q, 2)}, R = {_BR(filtros.KALMAN_R, 2)}), "
+                   f"com atraso de ~{_BR(_LAG['kalman'])} quadros depois de estabilizar. EMA + Kalman (padrão): "
+                   f"um depois do outro, mais liso e com atraso de ~{_BR(_LAG['ema_kalman'])} quadros "
+                   f"(~{_BR(_LAG['ema_kalman'] / 30, 2)} s a 30 quadros/s; mais com câmera lenta). Mesmos "
+                   "filtros e parâmetros do artigo EMA × Kalman (Fidelis, ERAMIA-RS 2026). Por que só na "
+                   "exibição: o filtro achata os picos. Na gravação de referência (mão saudável), aplicado "
+                   "também nas medidas, o EMA + Kalman baixou o TAM ativo do indicador de 99% para 89% do "
+                   "normal, a velocidade de pico em até 61% e a contagem de repetições (24 para 17 no "
+                   "indicador), e a MCP do indicador (74,6° para 65,3°) caiu abaixo do arco funcional. "
+                   "Escolha em Configurações; cada avaliação guarda o filtro usado e onde foi aplicado."),
+    "suavizacao_medidas": ("Suavização também nas medidas",
+                           "Opcional: o filtro entra antes das repetições e de todas as medidas, como no "
+                           "pipeline do artigo. Deixa as medidas mais estáveis, mas com picos menores.",
+                           "Flexão máxima, TAM ativo, velocidade de pico e repetições ficam menores que com os "
+                           "dados brutos e deixam de ser comparáveis com avaliações sem essa opção. O PDF e o "
+                           "CSV dizem se a opção estava marcada. Calibração, tremor, abertura dos dedos e "
+                           "polpa–palma usam sempre os dados brutos."),
     "tam_ao_vivo": ("TAM nos últimos 20 s",
                     "Soma das flexões de cada dedo ao longo do tempo: o dedo escolhido em destaque, os outros "
-                    "em cinza. Cada subida e descida é uma repetição.", ""),
+                    "em cinza. Cada subida e descida é uma repetição.",
+                    "A curva mostrada é suavizada (Configurações); a contagem de repetições usa os dados "
+                    "brutos, a não ser com a suavização aplicada também nas medidas."),
     # --------------------------------------------- evolução e ficha
     "reteste": ("Reteste",
                 "Repetir a medição logo em seguida, com a mão reposicionada. Comparando os dois, o sistema "

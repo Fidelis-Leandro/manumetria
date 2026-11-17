@@ -14,8 +14,9 @@ import math
 from PyQt5 import QtCore, QtGui, QtPrintSupport
 
 from app.dados import config as cfgmod
-from app.dados.resultados import CALIBRATION_NAMES, HAND_NAMES, deficit_total
+from app.dados.resultados import CALIBRATION_NAMES, HAND_NAMES, deficit_total, smoothing_name
 from app.formato import age_from, date_labels, fmt_date, fmt_datetime, fmt_deg, fmt_duration, fmt_num, fmt_pct
+from nucleo import filtros
 from nucleo import kinematics as kin
 
 # Cores para papel (fundo branco)
@@ -42,6 +43,25 @@ METHOD_NOTE = (
     "impossível ou com a mão de lado (mais de 60° da palma de frente) foram descartados. "
     "São estimativas, não substituem a goniometria: em testes, o erro típico ficou entre 5° e 15° "
     "por articulação, conforme a posição da mão.")
+
+
+def method_note(results):
+    """Método e limitações, com o filtro de suavização registrado na avaliação."""
+    reg = filtros.registro_de(results.get("filtro"))
+    if reg["modo"] == filtros.DESLIGADA:
+        smooth = "Suavização do sinal: desligada; todas as medidas usam os dados brutos (ângulos quadro a quadro)."
+    elif not reg["nas_medidas"]:
+        smooth = (f"Suavização do sinal: {reg['nome']} apenas na exibição ao vivo, durante a avaliação; "
+                  "todas as medidas deste relatório usam os dados brutos (ângulos quadro a quadro, sem filtro).")
+    else:
+        lag = filtros.atraso_quadros(reg)
+        smooth = (f"Suavização do sinal: {smoothing_name(results)}, aplicada TAMBÉM NAS MEDIDAS: aos ângulos "
+                  "de cada articulação antes das repetições e das medidas, como no pipeline do artigo "
+                  f"EMA × Kalman (Fidelis, ERAMIA-RS 2026); atraso médio de cerca de {fmt_num(lag, 1)} quadros "
+                  f"(≈{fmt_num(lag / 30.0, 2)} s a 30 quadros/s). A suavização reduz os picos: flexão máxima, "
+                  "TAM ativo, velocidade de pico e contagem de repetições ficam menores que com os dados "
+                  "brutos. Calibração, tremor, abertura dos dedos e polpa–palma usam os dados brutos.")
+    return f"{METHOD_NOTE} {smooth}"
 
 
 def _pp(a, b):
@@ -298,7 +318,7 @@ def build_document(patient, results, notes, history, cfg, density=PRINT_DENSITY,
         f"<h3>Resultado por dedo</h3>"
         f"<p align='center'><img src='grafico_pct' width='{IMG_W}'></p>{by_finger}"
         f"<h3>Observações do profissional</h3><p>{notes_html}</p>"
-        f"<h3>Método e limitações</h3><p style='color:{INK_MUTED}; font-size:8.5pt;'>{METHOD_NOTE}</p>"
+        f"<h3>Método e limitações</h3><p style='color:{INK_MUTED}; font-size:8.5pt;'>{method_note(results)}</p>"
         f"{evolution}"
         f"<h3{joints_break}>Articulações</h3>{joints}"
         f"<h3>Qualidade do movimento</h3>{quality}"

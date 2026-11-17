@@ -96,8 +96,10 @@ class AmplitudeTab(QtWidgets.QWidget):
         v.addWidget(self.deficit)
         v.addStretch()
 
-    def update_from(self, tr, hand=None):
-        self.tam_now.setText(fmt_deg(tr.tam))
+    def update_from(self, tr, hand=None, live=None):
+        """live = ângulos de exibição deste dedo agora (suavizados; None sem mão).
+        Mínimo, máximo, arco, TAM ativo etc. vêm do tracker (as medidas)."""
+        self.tam_now.setText(fmt_deg(None if live is None else float(live.sum())))
         pct, active = tr.percent_normal(), tr.active_tam()
         if active is None:
             self.active.setText(f"-- / {tr.normal:.0f}°")
@@ -113,7 +115,7 @@ class AmplitudeTab(QtWidgets.QWidget):
             if not visible:
                 continue
             jn = tr.joint_names[i]
-            now = None if tr.joints is None else tr.joints[i]
+            now = None if live is None else live[i]
             mn = None if tr.min_joints is None else tr.min_joints[i]
             mx = None if tr.max_joints is None else tr.max_joints[i]
             name.setText(jn)
@@ -428,14 +430,15 @@ class DetailPanel(QtWidgets.QWidget):
         if self._last:
             self.show_tracker(*self._last)
 
-    def show_tracker(self, tr, calibrated, hand=None):
+    def show_tracker(self, tr, calibrated, hand=None, live=None):
         """Atualiza só a aba visível (as outras atualizam ao serem abertas).
-        hand = medidas da mão inteira (polpa-palma, abertura, tremor, confiabilidade)."""
-        self._last = (tr, calibrated, hand)
+        hand = medidas da mão inteira (polpa-palma, abertura, tremor, confiabilidade);
+        live = ângulos de exibição do dedo agora (suavização da exibição ao vivo)."""
+        self._last = (tr, calibrated, hand, live)
         index = self.stack.currentIndex()
         self.title.setText("MÃO INTEIRA" if index == 3 else kin.NAME[tr.finger].upper())
         if index == 0:
-            self.pages[0].update_from(tr, hand)
+            self.pages[0].update_from(tr, hand, live)
         elif index == 1:
             self.pages[1].update_from(tr, calibrated)
         elif index == 2:

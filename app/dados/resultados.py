@@ -6,6 +6,7 @@ então uma sessão salva semanas atrás é lida exatamente como uma recém-feita
 
 import csv
 
+from nucleo import filtros
 from nucleo import kinematics as kin
 from nucleo import medidas
 
@@ -49,8 +50,9 @@ def finger_results(tr, tpd=None):
 
 
 def session_results(session, *, start, duration_s, hand, calibrated, source,
-                    hand_measures=None, tremor=None, reliability=None, points=None):
-    """kinematics.Session + dados da sessão -> dicionário serializável em JSON."""
+                    hand_measures=None, tremor=None, reliability=None, points=None, smoothing=None):
+    """kinematics.Session + dados da sessão -> dicionário serializável em JSON.
+    smoothing = registro do filtro de suavização usado (nucleo/filtros.py)."""
     calib = {True: "completa", "aproximada": "aproximada", False: "padrao"}[calibrated]
     whole = hand_measures.results() if hand_measures is not None else None
     tpd = (whole or {}).get("polpa_palma_cm", {})
@@ -61,6 +63,7 @@ def session_results(session, *, start, duration_s, hand, calibrated, source,
     return {"versao": VERSION, "inicio": start.isoformat(timespec="seconds"),
             "duracao_s": int(duration_s), "mao": hand, "calibracao": calib, "fonte": source,
             "pontos": points, "descartados": int(session.discarded),
+            "filtro": dict(smoothing) if smoothing else filtros.registro(filtros.DESLIGADA),
             "confiabilidade": reliability, "mao_inteira": whole, "dedos": fingers}
 
 
@@ -72,6 +75,38 @@ def retest_summary(results):
                           "articulacoes": [{"nome": j["nome"], "min": j["min"], "max": j["max"]}
                                            for j in d["articulacoes"]]}
                       for f, d in results["dedos"].items()}}
+
+
+def _br(v):
+    return f"{v:g}".replace(".", ",")
+
+
+def smoothing_name(results):
+    """Filtro registrado na avaliação com os parâmetros, ex.: "EMA + Kalman (α = 0,3; ...)".
+    Sem registro (avaliação anterior aos filtros) = Desligada."""
+    reg = filtros.registro_de(results.get("filtro"))
+    params = []
+    if "ema_alpha" in reg:
+        params.append(f"α = {_br(reg['ema_alpha'])}")
+    if "kalman_q" in reg:
+        params += [f"Q = {_br(reg['kalman_q'])}", f"R = {_br(reg['kalman_r'])}",
+                   f"P0 = {_br(reg['kalman_p0'])}"]
+    return reg["nome"] + (f" ({'; '.join(params)})" if params else "")
+
+
+def smoothing_in_measures(results):
+    """True se o filtro registrado entrou nas medidas (não só na exibição ao vivo)."""
+    return filtros.registro_de(results.get("filtro"))["nas_medidas"]
+
+
+def smoothing_text(results):
+    """Filtro registrado e onde foi aplicado, em texto (CSV, exportação)."""
+    reg = filtros.registro_de(results.get("filtro"))
+    if reg["modo"] == filtros.DESLIGADA:
+        return "Desligada (medidas e exibição com os dados brutos)"
+    if reg["nas_medidas"]:
+        return f"{smoothing_name(results)}, aplicada também nas medidas"
+    return f"{reg['nome']} só na exibição ao vivo; medidas com os dados brutos"
 
 
 def mean_pct(results):
@@ -112,6 +147,8 @@ def write_csv(path, results, patient=None):
         w.writerow(["mao", HAND_NAMES.get(results["mao"], "")])
         w.writerow(["duracao_s", results["duracao_s"]])
         w.writerow(["quadros_descartados_medida_impossivel", results["descartados"]])
+        w.writerow(["suavizacao", smoothing_text(results)])
+        w.writerow(["suavizacao_nas_medidas", "sim" if smoothing_in_measures(results) else "nao"])
         w.writerow(["confiabilidade", rel.get("nivel", ""), " / ".join(rel.get("motivos", []))])
         w.writerow(["abertura_ind_med_graus", num(spread[0]), "abertura_med_ane_graus", num(spread[1]),
                     "abertura_ane_min_graus", num(spread[2])])

@@ -1,7 +1,7 @@
 """
 Motor da avaliação (sem interface): recebe cada quadro da câmera e cuida de
 preparação -> calibração -> avaliação, do estabilizador, da pausa, do relógio,
-das medidas e dos pontos gravados.
+das medidas, da suavização dos ângulos e dos pontos gravados.
 
 A tela de avaliação (app/telas/avaliacao.py) só mostra o que este motor
 decide. As ferramentas e os testes usam o mesmo motor para analisar uma
@@ -15,12 +15,14 @@ gravação (analisar()), então a conta é sempre a mesma em todo lugar.
 
 import datetime
 import os
+from collections import deque
 from dataclasses import dataclass
 
 import numpy as np
 
 from app.dados.resultados import HAND_NAMES, session_results
 from nucleo import capture
+from nucleo import filtros
 from nucleo import kinematics as kin
 from nucleo import medidas
 from nucleo.caminhos import POINTS_DIR, ROOT
@@ -40,9 +42,14 @@ class Passo:
 
 
 class Avaliador:
-    def __init__(self, retest=False, frames=None):
+    def __init__(self, retest=False, frames=None, filtro=filtros.PADRAO, nas_medidas=False):
         """retest = é o reteste (mesma medição repetida logo depois);
-        frames = pontos já gravados (o reteste continua a gravação da avaliação)."""
+        frames = pontos já gravados (o reteste continua a gravação da avaliação);
+        filtro = modo da suavização ("desligada", "ema", "kalman", "ema_kalman") ou
+        o registro salvo numa avaliação (filtros.registro, que já traz "nas_medidas");
+        nas_medidas = a suavização entra também nas medidas (com um modo em texto).
+        Sem nas_medidas, o filtro vale só para a exibição ao vivo (self.display e
+        self.display_history) e a Session recebe os dados brutos."""
         self.retest = retest
         self.frames = [] if frames is None else frames
         self.started_at = datetime.datetime.now()
@@ -53,6 +60,13 @@ class Avaliador:
         self.calib_labels = []         # lados da mão vistos na calibração (votação)
         self.calibrated = False        # False | True | "aproximada"
         self.session = kin.Session()
+        reg = filtro if isinstance(filtro, dict) else filtros.registro(filtro, nas_medidas=nas_medidas)
+        self.filtro = filtros.BancoFiltros(reg)   # um filtro por articulação
+        self.filter_measures = bool(reg.get("nas_medidas"))
+        self._filter_hand = None       # lado usado no cálculo dos ângulos que o filtro recebeu
+        # exibição ao vivo (valor "Agora", dica da mão 3D, gráfico): ângulos suavizados
+        self.display = None            # {dedo: array} do último quadro medido, ou None sem mão
+        self.display_history = deque() # (t, [TAM de cada dedo ou nan]), mesma janela da Session
         self.stab = HandStabilizer()   # lado da mão fixo + tolerância a falhas curtas
         self.hand_name = ""
         self.mirrored = True
@@ -81,8 +95,9 @@ class Avaliador:
         #  - ângulo impossível (erro do MediaPipe) -> como mão perdida
         #  - mão de lado (vista ruim para os ângulos) -> estado "vista"
         angles, valid, bad_kind = None, True, "perdida"
+        angle_hand = self.stab.hand
         if raw["world"] is not None:
-            angles = kin.joint_angles(raw["world"], self.stab.hand)   # com sinal
+            angles = kin.joint_angles(raw["world"], angle_hand)       # com sinal
             if not kin.plausible(angles):
                 valid = False
                 if self.phase == "avaliacao" and not self.paused:
@@ -105,14 +120,31 @@ class Avaliador:
         if self.paused:                       # imagem ao vivo, medições paradas
             self.tremor.interrupt()
             return passo
+        smooth = self._smooth(state, angles, angle_hand)
+        # calibração, tremor e medidas da mão inteira usam sempre os dados brutos; as
+        # medidas por dedo também, a não ser com a suavização aplicada nas medidas;
+        # a exibição ao vivo usa os ângulos suavizados
         self._feed_measures(raw, state, angles, now)
         if self.phase == "preparacao":
             self._preparation(state, now, passo)
         elif self.phase == "calibracao":
             self._calibration(state, angles, now, passo)
         else:
-            self._evaluation(state, angles, now)
+            self._evaluation(state, angles, smooth, now)
         return passo
+
+    def _smooth(self, state, angles, hand):
+        """Suavização (nucleo/filtros.py), logo depois do cálculo e do descarte.
+        Só quadros "ok" atualizam o filtro ("segurando" não mexe nele); perda longa
+        da mão, outra mão, mão de lado ou troca do lado usado nos ângulos o zeram."""
+        if state == "ok":
+            if hand != self._filter_hand:
+                self.filtro.reset()
+                self._filter_hand = hand
+            return self.filtro.aplicar(angles)
+        if state != "segurando":
+            self.filtro.reset()
+        return None
 
     def _record(self, raw):
         phase = "pausa" if self.paused else "recalibracao" if self.recalibrating else self.phase
@@ -199,7 +231,7 @@ class Avaliador:
         if self.recalibrating:
             if self.prev_hand and self.stab.locked_hand != self.prev_hand:
                 # outra mão: não mistura os dados das duas
-                self.session = kin.Session(sens, start_time=now)
+                self._new_session(sens, now)
                 self.paused_total, self.clock_stopped_at = 0.0, None
                 notice = "Outra mão detectada: nova sessão iniciada"
             else:
@@ -208,25 +240,40 @@ class Avaliador:
                 self.start_clock(now)
             self.recalibrating = False
         else:
-            self.session = kin.Session(sens, start_time=now)
+            self._new_session(sens, now)
             if self.retest:
                 notice = "Reteste: abra e feche a mão algumas vezes, o máximo que conseguir"
         self.message = (notice, None) if notice else None
         self._message_until = now + NOTICE_S if notice else None
 
-    def _evaluation(self, state, angles, now):
+    def _evaluation(self, state, angles, smooth, now):
         if state == "ok":
-            self.session.update(angles, now)
+            self._update_session(smooth if self.filter_measures else angles, smooth, now)
         elif state in ("perdida", "outra_mao", "vista"):
-            self.session.update(None, now)    # perda longa: aí sim recomeça o detector
+            self._update_session(None, None, now)   # perda longa: aí sim recomeça o detector
         # "segurando": nada muda (não zera repetições em andamento)
+
+    def _update_session(self, measured, shown, now):
+        """Um caminho só: a Session recebe os ângulos das medidas (dados brutos, ou
+        suavizados com nas_medidas) e a exibição recebe os suavizados, no mesmo quadro."""
+        self.session.update(measured, now)
+        self.display = shown
+        tams = [np.nan if shown is None else float(shown[f].sum()) for f in kin.FINGERS]
+        self.display_history.append((now, tams))
+        while self.display_history and now - self.display_history[0][0] > kin.Session.HISTORY_S:
+            self.display_history.popleft()
+
+    def _new_session(self, sens, now):
+        self.session = kin.Session(sens, start_time=now)
+        self.display, self.display_history = None, deque()
 
     # ----------------------------------------------------- pausa e relógio
     def toggle_pause(self, now):
         self.paused = not self.paused
         if self.paused:
             self.stop_clock(now)
-            self.session.update(None, now)    # fecha o "vale" atual: não junta antes e depois
+            self._update_session(None, None, now)   # fecha o "vale" atual: não junta antes e depois
+            self.filtro.reset()               # idem para a suavização
             self.message = ("Sessão pausada", "As medições estão paradas. Clique em Retomar para continuar.")
         else:
             self.start_clock(now)
@@ -237,6 +284,7 @@ class Avaliador:
         self.recalibrating = True
         self.prev_hand = self.stab.locked_hand
         self.stab.unlock()
+        self.filtro.reset()
         self.stop_clock(now)
         self.phase, self.hand_frames = "preparacao", 0
 
@@ -286,14 +334,17 @@ class Avaliador:
                                hand=self.stab.locked_hand, calibrated=self.calibrated, source=source,
                                hand_measures=self.hand_meas, tremor=self.tremor,
                                reliability=self.reliability(now),
-                               points=None if self.retest else self.points_path())
+                               points=None if self.retest else self.points_path(),
+                               smoothing=self.filtro.reg)
 
 
-def analisar(rows, retest=False):
+def analisar(rows, retest=False, filtro=filtros.PADRAO):
     """Passa quadros gravados (capture.load_recording) pelo motor, como a tela
     faria ao vivo. Repete a pausa e a recalibração onde a fase gravada indica.
+    filtro = modo ou registro da suavização (o recálculo usa o salvo na avaliação,
+    que diz se o filtro entra nas medidas; com um modo em texto, só na exibição).
     Devolve o Avaliador no fim (use .results(rows[-1]["t"], ...))."""
-    av = Avaliador(retest=retest)
+    av = Avaliador(retest=retest, filtro=filtro)
     previous = ""
     for raw in rows:
         phase = raw.get("fase", "").replace("reteste_", "")
