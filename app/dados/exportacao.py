@@ -17,7 +17,7 @@ HAND = {"Right": "direita", "Left": "esquerda"}
 
 SESSION_COLUMNS = [
     ("paciente_id", "Número interno do paciente no banco", ""),
-    ("paciente_codigo", "Identificação do paciente (FICTÍCIA nesta versão de teste)", ""),
+    ("paciente_codigo", "Identificação do paciente", ""),
     ("idade_anos", "Idade na data da avaliação", "anos"),
     ("mao_dominante", "Mão dominante (cadastro)", ""),
     ("mao_avaliada", "Mão avaliada (cadastro)", ""),
@@ -140,6 +140,6 @@ def export_research(db, folder):
         for row in SESSION_COLUMNS + _finger_descriptions() + RETEST_COLUMNS:
             w.writerow(row)
         w.writerow([])
-        w.writerow(["observacao", "Uma linha por avaliação e dedo. Ambiente de teste: dados fictícios. "
+        w.writerow(["observacao", "Uma linha por avaliação e dedo (exportado pelo ManuMetria). "
                     "Medidas estimadas por câmera (MediaPipe), não substituem a goniometria.", ""])
     return data_path, n

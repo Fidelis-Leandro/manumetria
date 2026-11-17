@@ -19,7 +19,7 @@ NOT_INFORMED = "não informada"
 HANDS_DOMINANT = [NOT_INFORMED, "Direita", "Esquerda", "Ambidestro"]
 HANDS_EVALUATED = [NOT_INFORMED, "Direita", "Esquerda", "Ambas"]
 SITUATIONS = [("tratamento", "Em tratamento"), ("alta", "Alta")]
-FICTITIOUS_NOTE = "Versão de teste: cadastre apenas dados fictícios."
+SUBTITLE = "ManuMetria · Avaliação cinemática da mão por visão computacional"
 TREND_COLOR = {"melhora": GOOD, "piora": POOR, "plato": FAIR, "estavel": MUTED}
 
 
@@ -87,15 +87,13 @@ class PatientDialog(QtWidgets.QDialog):
         v.setContentsMargins(22, 18, 22, 16)
         v.setSpacing(10)
         v.addWidget(label("Editar paciente" if editing else "Novo paciente", 18, TEXT, bold=True))
-        note = label(FICTITIOUS_NOTE, 13, FAIR)
-        v.addWidget(note)
 
         form = QtWidgets.QFormLayout()
         form.setLabelAlignment(QtCore.Qt.AlignRight)
         form.setHorizontalSpacing(14)
         form.setVerticalSpacing(10)
         self.ident = QtWidgets.QLineEdit()
-        self.ident.setPlaceholderText("Código ou nome fictício (obrigatório)")
+        self.ident.setPlaceholderText("Código ou nome (obrigatório)")
         self.birth = _DateField()
         self.dominant = QtWidgets.QComboBox()
         self.dominant.addItems(HANDS_DOMINANT)
@@ -170,7 +168,7 @@ class PatientDialog(QtWidgets.QDialog):
 
     def _save(self):
         if not self.ident.text().strip():
-            self.error.setText("Preencha a identificação (código ou nome fictício).")
+            self.error.setText("Preencha a identificação (código ou nome).")
             self.ident.setFocus()
             return
         self.result_action = "salvar"
@@ -202,8 +200,7 @@ class PatientsScreen(QtWidgets.QWidget):
         v.setContentsMargins(0, 0, 0, 0)
         v.setSpacing(0)
         self.header = ScreenHeader("Pacientes")
-        self.header.subtitle.setText(FICTITIOUS_NOTE)
-        self.header.subtitle.setStyleSheet(f"color: {FAIR}; font-size: 13px; background: transparent;")
+        self.header.subtitle.setText(SUBTITLE)
         b_help = self.header.add_action(button("Ajuda", "help", "quiet"))
         b_help.setToolTip("Como fazer uma avaliação e o que significa cada medida")
         b_help.clicked.connect(self.open_help.emit)

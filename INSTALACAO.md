@@ -1,6 +1,6 @@
-# Guia de instalação para um agente (Claude no VS Code)
+# ManuMetria — guia de instalação detalhado
 
-Este guia é para um assistente de IA instalar e abrir o sistema no Windows da pessoa que pediu. Siga os
+Este guia serve para uma pessoa ou um assistente de programação instalar e abrir o ManuMetria no Windows da pessoa que pediu. Siga os
 passos na ordem e confira o resultado esperado de cada um antes de seguir. Se um passo falhar, veja
 **Problemas comuns** no fim.
 
@@ -8,8 +8,6 @@ passos na ordem e confira o resultado esperado de cada um antes de seguir. Se um
 - Trabalhe só dentro da pasta do projeto. Não instale pacotes no Python global: use o `.venv` do projeto.
 - Não altere o código para "fazer funcionar" sem antes explicar o problema para a pessoa.
 - Não publique nem envie para lugar nenhum a pasta `dados_locais/` (banco de pacientes).
-- O modelo **MANO** (mão 3D) não pode ser baixado por você: exige conta e aceite de licença pela própria
-  pessoa. Explique o passo e deixe que ela faça (ver passo 7). O sistema funciona sem ele.
 
 Testado com: Windows 11, Python 3.11.9, os pacotes do `requirements.txt`.
 
@@ -88,8 +86,7 @@ Esperado: aparece o arquivo `hand_landmarker.task` (cerca de 7,8 MB) na pasta do
 .venv\Scripts\python.exe tests\testar.py
 ```
 
-Esperado: cinco linhas `ok` e `Todos os testes passaram.` Sem o MANO, o teste da mão 3D avisa
-"arquivos não encontrados ... pulando": isso é normal.
+Esperado: cinco linhas `ok` e `Todos os testes passaram.`
 
 ### 6. Criar os pacientes fictícios de demonstração
 
@@ -100,54 +97,7 @@ Esperado: cinco linhas `ok` e `Todos os testes passaram.` Sem o MANO, o teste da
 Esperado: EX-001 (5 avaliações), João (8) e Maria (9). Rodar de novo não duplica. Os dados ficam em
 `dados_locais\`.
 
-### 7. Mão 3D com o modelo MANO (opcional; o download é feito pela pessoa)
-
-A tela de avaliação mostra uma mão 3D com pele usando o modelo **MANO** (Max-Planck). A licença não permite
-redistribuir os arquivos, então eles **não estão no repositório** e **você não pode baixá-los**: o download
-exige conta e aceite de licença pela própria pessoa. Sem o MANO o sistema mede normalmente e mostra, no lugar
-da mão 3D, o aviso "Mão 3D não instalada (modelo MANO)".
-
-**7a. O que pedir para a pessoa fazer** (copie estas instruções para ela):
-
-1. Abrir <https://mano.is.tue.mpg.de>, clicar em **Sign Up**, criar a conta (gratuita, uso acadêmico) e
-   confirmar o e-mail.
-2. Entrar (**Sign In**), abrir a página **Download** e aceitar a licença.
-3. Baixar o item **"Models & Code"**: é o arquivo **`mano_v1_2.zip`**. Os outros downloads do site (por
-   exemplo, os do SMPL+H) **não** servem.
-4. Deixar o arquivo na pasta **Downloads** (não precisa descompactar) e avisar quando terminar.
-
-**7b. Quando a pessoa avisar que baixou, rode:**
-
-```powershell
-.venv\Scripts\python.exe tools\instalar_mano.py
-```
-
-O script procura sozinho, em `Downloads` e em `OneDrive*\Downloads`, o `mano_v1_2*.zip` **ou** a pasta
-`mano_v1_2` já descompactada. Ele copia só os dois arquivos necessários (`MANO_RIGHT.pkl` e
-`MANO_LEFT.pkl`) para `assets\mano\`, converte para `mano_right.npz` / `mano_left.npz` e confere que o
-modelo carrega.
-
-- Esperado: `Mão 3D instalada e verificada.`
-- `Não encontrei o mano_v1_2.zip...`: procure o arquivo e passe o caminho (zip ou pasta):
-
-  ```powershell
-  Get-ChildItem $env:USERPROFILE -Recurse -Filter "mano_v1_2*" -ErrorAction SilentlyContinue | Select-Object FullName
-  .venv\Scripts\python.exe tools\instalar_mano.py "C:\caminho\encontrado\mano_v1_2.zip"
-  ```
-
-- `Não achei MANO_RIGHT.pkl dentro de ...`: o arquivo baixado não é o "Models & Code". Peça para a pessoa
-  baixar o item certo (7a, passo 3).
-
-**7c. Confirmar que funcionou:**
-
-1. `.venv\Scripts\python.exe tests\testar.py`: todos `ok`. O teste `test_mao3d.py` agora mostra
-   linhas `[MANO right]` e `[MANO left]` com "IK em 200 poses aleatórias" (antes dizia "pulando").
-2. Abra o sistema (`sistema.py --sim` serve) e inicie uma avaliação: a mão 3D com pele aparece no palco e
-   o aviso "Mão 3D não instalada" some. Se o sistema já estava aberto, feche e abra de novo.
-
-Não envie os arquivos do MANO para nenhum lugar (o `.gitignore` já impede que entrem no Git).
-
-### 8. Abrir o sistema
+### 7. Abrir o ManuMetria
 
 ```powershell
 .venv\Scripts\python.exe sistema.py          # com a webcam
@@ -156,7 +106,8 @@ Não envie os arquivos do MANO para nenhum lugar (o `.gitignore` já impede que 
 
 Ou, por dois cliques: `Abrir sistema.bat` / `Abrir simulacao.bat` (abrem sem janela de terminal).
 
-Esperado: a janela "Avaliação da mão" com a lista de pacientes. Sugira à pessoa o **Roteiro de teste** do
+Esperado: a janela "ManuMetria" com a lista de pacientes. Na tela de avaliação aparece a mão 3D (esferas
+nas articulações, coloridas conforme o % do normal de cada dedo). O uso está descrito em **Como usar**, no
 README.md.
 
 ---
@@ -170,8 +121,7 @@ README.md.
 | `ImportError: DLL load failed` ao importar `mediapipe` ou `cv2` | Instalar o *Microsoft Visual C++ Redistributable* (x64): `winget install -e --id Microsoft.VCRedist.2015+.x64`. |
 | O `.bat` abre e fecha, ou a janela não aparece | Rode pelo terminal para ver a mensagem: `.venv\Scripts\python.exe sistema.py --sim`. |
 | `não consegui abrir a câmera 0` | Outra câmera: `sistema.py --cam 1`. Feche outros programas que usam a câmera (Teams, Zoom). Verifique a permissão de câmera do Windows (Configurações > Privacidade > Câmera). |
-| Erro de OpenGL / tela 3D preta | Atualize o driver de vídeo. As medidas funcionam mesmo sem a mão 3D. |
-| Mão 3D não aparece depois de instalar o MANO | Feche e abra o sistema. Confira se existem `assets\mano\mano_right.npz` e `mano_left.npz`; se não, rode o passo 7b de novo. |
+| Erro de OpenGL / tela 3D preta | Atualize o driver de vídeo (é preciso OpenGL 2.0 ou superior). |
 | Download do `hand_landmarker.task` falha | Baixe manualmente de `https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/latest/hand_landmarker.task` e coloque na pasta do projeto. |
 | A interface aparece muito pequena ou grande | Em Configurações > Interface > Tamanho (vale ao reiniciar). |
 
@@ -179,6 +129,7 @@ README.md.
 
 - `sistema.py`: ponto de entrada. `nucleo/`: cálculo sem interface (`kinematics.py`, `medidas.py`), câmera
   (`capture.py`) e os caminhos do projeto (`caminhos.py`). `app/`: telas, motor da avaliação, dados, mão 3D
-  (`app/componentes/mao3d.py`).
-- `tests/`: testes automáticos. `tools/`: demonstração, instalador do MANO e análise de gravações.
+  procedural (`app/componentes/mao3d.py`).
+- `tests/`: testes automáticos. `tools/`: demonstração, análise de gravações e o gerador do pacote para o
+  registro de software (`gerar_hash_registro.py`).
 - Detalhes para manutenção: `DESENVOLVIMENTO.md`.

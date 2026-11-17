@@ -51,6 +51,7 @@ class EvaluationScreen(QtWidgets.QWidget):
         self.source_name = ""
         self.patient = {}
         self.hand3d = Hand3D()                   # criada uma vez só (OpenGL)
+        self.hand3d.joint_info = self._joint_info
         self.selected = "index"
         self.av = Avaliador()
         self.quality = CaptureQuality()
@@ -84,6 +85,7 @@ class EvaluationScreen(QtWidgets.QWidget):
         self.toolbar.btn_3d.clicked.connect(lambda: self.stage.set_camera_main(False))
         self.toolbar.btn_cam.clicked.connect(lambda: self.stage.set_camera_main(True))
         self.stage.swapped.connect(self.toolbar.sync)
+        self.toolbar.sync(self.stage.camera_main)
         self.toolbar.btn_center.clicked.connect(self.hand3d.reset_camera)
         self.toolbar.btn_full.clicked.connect(self.toggle_expanded)
         self.toolbar.btn_tips.clicked.connect(lambda: self.show_tips())
@@ -328,8 +330,10 @@ class EvaluationScreen(QtWidgets.QWidget):
                  f"{swatch(GOOD)} acima de 75%")
         return [
             (self.stage, "Câmera e mão 3D",
-             "A vista grande mostra a mão em 3D e a miniatura, a câmera. <b>Clique na miniatura</b> "
-             "para trocar as duas. No 3D, arraste para girar e use a roda do mouse para aproximar."),
+             "A vista grande mostra a câmera e a miniatura, a mão em 3D. <b>Clique na miniatura</b> "
+             "para trocar as duas. No 3D, arraste para girar e use a roda do mouse para aproximar. "
+             f"As esferas das articulações têm a cor do dedo ({grade}); <b>passe o mouse</b> "
+             "sobre uma delas para ver o nome e os valores."),
             (list(self.chips.values()), "Um cartão por dedo",
              "Cada cartão mostra quantos movimentos o dedo fez e o % do normal da amplitude "
              f"total (TAM): {grade}. <b>Clique num dedo</b> para ver os detalhes dele."),
@@ -393,10 +397,7 @@ class EvaluationScreen(QtWidgets.QWidget):
         self.stage.show_banner("Vire a palma para a câmera" if passo.state == "vista"
                                else DISTANCE_TEXT.get(distance))
         if passo.pose is not None:
-            img = passo.pose["img"] * [passo.pose["aspect"], 1.0]
-            self.hand3d.update(geometria.world_to_gl(passo.pose["world"]), av.mirrored, img)
-        if passo.calibrar_3d:
-            self.hand3d.start_calibration()
+            self.hand3d.update(geometria.world_to_gl(passo.pose["world"]))
         self._show_message()
         if av.paused:
             self.top.set_state("paused")
@@ -475,11 +476,28 @@ class EvaluationScreen(QtWidgets.QWidget):
             issues.append("O sistema ainda não tem retestes suficientes: faça o reteste no relatório.")
         return issues
 
+    def _joint_info(self, finger, joint):
+        """Texto da dica ao passar o mouse sobre uma articulação da mão 3D."""
+        tr = self.av.session.trackers[finger]
+        k = tr.joint_names.index(joint)
+        lines = [f"<b>{kin.NAME[finger]} · {joint}</b>"]
+        if tr.joints is not None:
+            lines.append(f"Agora: {fmt_num(tr.joints[k], 0)}°")
+        if tr.max_joints is not None:
+            lines.append(f"Flexão máxima: {fmt_num(tr.max_joints[k], 0)}° "
+                         f"(normal {fmt_num(tr.normal_joints[k], 0)}°)")
+        pct = tr.percent_normal()
+        if pct is None:
+            lines.append("Sem medidas ainda")
+        else:
+            lines.append(f"Dedo: {fmt_num(100 * pct, 0)}% do normal ({kin.grade(pct)})")
+        return "<br>".join(lines)
+
     def _color_hand(self):
-        """Pele 3D: cada dedo com a cor da sua classificação; o selecionado
-        forte, os outros em tom pastel da mesma cor. Cores do palco (VIEW_*):
-        o fundo do 3D é escuro nos dois temas."""
-        skin = np.array(mao3d.SKIN_COLOR)
+        """Mão 3D: as articulações de cada dedo com a cor da classificação do
+        dedo; o selecionado forte, os outros em tom pastel da mesma cor. Cores
+        do palco (VIEW_*): o fundo do 3D é escuro nos dois temas."""
+        skin = np.array(mao3d.NEUTRAL_COLOR)
         colors = {}
         for f in kin.FINGERS:
             grade_hex = VIEW_GRADE_COLOR[kin.grade(self.av.session.trackers[f].percent_normal())]

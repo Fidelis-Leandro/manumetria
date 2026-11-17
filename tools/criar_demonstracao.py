@@ -140,7 +140,7 @@ EX_INJURY = TODAY - datetime.timedelta(weeks=7)
 EX = {"identificacao": "EX-001 (exemplo fictício)", "nascimento": "1971-03-12",
       "mao_dominante": "Direita", "mao_avaliada": "Direita",
       "condicao": "Pós-operatório de tendão flexor (exemplo)", "data_lesao": EX_INJURY.isoformat(),
-      "profissional": "Profissional de exemplo", "observacoes": "Paciente fictício gerado para teste."}
+      "profissional": "Profissional de exemplo", "observacoes": "Paciente fictício gerado para demonstração."}
 EX_CURVE = {"peak0": [(15, 25, 18)] * 4, "peak1": [(51, 85, 60)] * 4,
             "low0": [(14, 14, 14)] * 4, "low1": [(2, 2, 2)] * 4, "thumb": (3, 18, 42)}
 EX_PLAN = [(day(21 + 7 * k, EX_INJURY), k / 4, f"Semana {k + 1} de reabilitação (exemplo).", k in (1, 2, 4), {})

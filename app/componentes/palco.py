@@ -8,11 +8,15 @@ import pyqtgraph.opengl as gl
 from app.componentes import mao3d
 from app.tema import *  # noqa: F401,F403
 from nucleo import geometria
+from nucleo import kinematics as kin
 
 
 class Hand3D:
-    """GLViewWidget com a pele MANO. Sem os arquivos do MANO, mostra só a grade
-    (as medições continuam funcionando; veja assets/mano/LEIA-ME.txt)."""
+    """GLViewWidget com a mão 3D procedural (app/componentes/mao3d.py).
+
+    Passar o mouse (ou clicar) sobre uma articulação colorida mostra o nome e
+    os valores dela; o texto vem de `joint_info(dedo, sigla)`, definido pela
+    tela de avaliação."""
 
     def __init__(self):
         self.view = gl.GLViewWidget()
@@ -23,48 +27,69 @@ class Hand3D:
         grid.setColor((60, 75, 90, 110))
         self.view.addItem(grid)
         self.reset_camera()
-        try:
-            self.skin = mao3d.SkinHand(self.view)
-        except FileNotFoundError as exc:
-            print(f"Mão 3D indisponível: {exc}")
-            self.skin = None
-            # aviso na própria tela: sem ele, a área vazia parece defeito
-            note = QtWidgets.QLabel("Mão 3D não instalada (modelo MANO).\n"
-                                    "As medidas funcionam normalmente.\n"
-                                    "Para instalar: Instalar mao 3D.bat (veja assets/mano/LEIA-ME.txt).",
-                                    self.view)
-            note.setStyleSheet(f"color: {VIEW_MUTED}; background: transparent; font-size: 13px;"
-                               " padding-bottom: 4px;")   # sem isso o "_" da última linha fica cortado
-            note.ensurePolished()                 # aplica a fonte do estilo antes de medir o texto
-            note.adjustSize()
-            note.move(16, 16)
+        self.hand = mao3d.ProceduralHand(self.view)
+        self.joint_info = None                    # (dedo, sigla) -> texto da dica
+        self._hover = None
+        self._press = None
+        self.view.setMouseTracking(True)
+        self.view.installEventFilter(_HoverFilter(self))
 
     def reset_camera(self):
         self.view.setCameraPosition(distance=5, elevation=12, azimuth=-90)
         self.view.opts["center"] = pg.Vector(0, 0, 1.1)
         self.view.update()
 
-    def start_calibration(self):
-        if self.skin:
-            self.skin.start_calibration()
-
-    def update(self, landmarks, mirrored, img):
-        if self.skin:
-            self.skin.set_pose(landmarks, mirrored, img=img, cm_per_unit=100.0 / geometria.WORLD_SCALE)
+    def update(self, landmarks):
+        self.hand.set_pose(landmarks)
 
     def set_finger_colors(self, colors):
-        if self.skin:
-            self.skin.set_part_colors(colors)
+        self.hand.set_finger_colors(colors)
 
     def show_neutral(self):
         """Mão aberta e parada, só para ilustrar a tela (ex.: durante as dicas)."""
-        if self.skin and self.skin.calibration_status() is None:
-            self.skin.set_pose(geometria.world_to_gl(geometria.build_hand_world([3, 3, 3, 3], 3)), True)
+        self.hand.set_pose(geometria.world_to_gl(geometria.build_hand_world([3, 3, 3, 3], 3)))
 
     def hide_until_pose(self):
         """Esconde a mão ilustrativa: ela volta quando a câmera achar a mão de verdade."""
-        if self.skin:
-            self.skin.hide()
+        self.hand.hide()
+
+    # ------------------------------------------------- dica sobre a articulação
+    def _show_joint_tip(self, pos, global_pos):
+        joint = self.hand.joint_at(pos.x(), pos.y())
+        if joint is None:
+            if self._hover is not None:
+                QtWidgets.QToolTip.hideText()
+            self._hover = None
+            return
+        text = self.joint_info(*joint) if self.joint_info else None
+        text = text or f"{kin.NAME[joint[0]]} · {joint[1]}"
+        if joint != self._hover or not QtWidgets.QToolTip.isVisible():
+            QtWidgets.QToolTip.showText(global_pos, text, self.view)
+        self._hover = joint
+
+
+class _HoverFilter(QtCore.QObject):
+    """Mouse parado (sem botão) ou clique sem arrastar sobre a mão 3D -> dica."""
+
+    def __init__(self, hand3d):
+        super().__init__(hand3d.view)
+        self.h = hand3d
+
+    def eventFilter(self, obj, ev):
+        t = ev.type()
+        if t == QtCore.QEvent.MouseMove and ev.buttons() == QtCore.Qt.NoButton:
+            self.h._show_joint_tip(ev.pos(), ev.globalPos())
+        elif t == QtCore.QEvent.MouseButtonPress:
+            self.h._press = ev.pos()
+            QtWidgets.QToolTip.hideText()
+            self.h._hover = None
+        elif t == QtCore.QEvent.MouseButtonRelease and self.h._press is not None:
+            if (ev.pos() - self.h._press).manhattanLength() < 4:        # clique, não arraste
+                self.h._show_joint_tip(ev.pos(), ev.globalPos())
+            self.h._press = None
+        elif t == QtCore.QEvent.Leave:
+            self.h._hover = None
+        return False
 
 
 # =============================================================================
@@ -82,7 +107,7 @@ class ViewStage(QtWidgets.QWidget):
         super().__init__()
         self.setAttribute(QtCore.Qt.WA_StyledBackground, True)
         self.setStyleSheet("background: #000;")
-        self.camera_main = False
+        self.camera_main = True                  # começa pela câmera; a mão 3D fica na miniatura
 
         self.cam = QtWidgets.QLabel("Aguardando câmera…", self)
         self.cam.setAlignment(QtCore.Qt.AlignCenter)
@@ -104,9 +129,10 @@ class ViewStage(QtWidgets.QWidget):
         self.legend.setStyleSheet(f"color: {VIEW_MUTED}; font-size: 12px; background: rgba(11,17,24,200);"
                                   " padding: 5px 9px; border-radius: 4px;")
         grade = VIEW_GRADE_COLOR
-        self.legend.setText(f"Cor de cada dedo = % do normal na sessão &nbsp;&nbsp;"
+        self.legend.setText(f"Cor das articulações = % do normal do dedo na sessão &nbsp;&nbsp;"
                             f"{swatch(grade['ruim'])} abaixo de 50% &nbsp; {swatch(grade['regular'])} 50 a 75%"
-                            f" &nbsp; {swatch(grade['bom'])} acima de 75%")
+                            f" &nbsp; {swatch(grade['bom'])} acima de 75% &nbsp; {swatch('#ccd1d9')} sem dados"
+                            f"<br>Passe o mouse sobre uma articulação para ver o nome e os valores")
         # faixa de aviso curta, sem escurecer a imagem (ex.: "vire a palma")
         self.banner = QtWidgets.QLabel(self)
         self.banner.setAlignment(QtCore.Qt.AlignCenter)

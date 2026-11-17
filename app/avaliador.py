@@ -36,7 +36,6 @@ class Passo:
     """O que aconteceu num quadro (para a tela se atualizar)."""
     state: str = None              # estado do estabilizador: ok, segurando, perdida, outra_mao, vista
     pose: dict = None              # quadro usado para desenhar a mão 3D (None = não redesenha)
-    calibrar_3d: bool = False      # a mão 3D deve recomeçar a calibração dela
     calibrou: bool = False         # a calibração terminou neste quadro
 
 
@@ -161,7 +160,6 @@ class Avaliador:
             self.calib = kin.Calibration()
             self.calib_start = now
             self.calib_labels = []
-            passo.calibrar_3d = True
 
     def _calibration(self, state, angles, now, passo):
         if state in ("perdida", "outra_mao"):
@@ -169,7 +167,6 @@ class Avaliador:
             return
         if state == "vista":                  # mão de lado: recomeça a contagem
             self.calib.reset()
-            passo.calibrar_3d = True
             self.message = ("Vire a palma para a câmera", "Com a mão de lado a câmera não mede bem os dedos.")
             return
         if state == "segurando":              # falha curta: só espera
@@ -178,7 +175,6 @@ class Avaliador:
         # mão aberta: pede, mas não trava quem não consegue abrir toda (ex.: contratura)
         if not kin.is_open_hand(angles) and waited < OPEN_HAND_WAIT_S:
             self.calib.reset()
-            passo.calibrar_3d = True
             self.message = ("Abra a mão o máximo que conseguir",
                             "Dedos esticados e afastados, palma voltada para a câmera.")
             return
@@ -186,7 +182,6 @@ class Avaliador:
         timed_out = waited > kin.CALIBRATION_TIMEOUT_S and self.calib.best
         if not self.calib.is_still() and not timed_out:
             self.calib.reset()
-            passo.calibrar_3d = True
             self.message = ("Mantenha a mão parada", "Só por 2 segundos.")
             return
         # contagem regressiva 3-2-1 (número: a tela mostra grande)

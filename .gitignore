@@ -15,15 +15,12 @@ copias_de_seguranca/
 # Modelo do MediaPipe (baixado pelo "Instalar sistema.bat")
 hand_landmarker.task
 
-# Modelo MANO: a licença não permite redistribuir (cada pessoa baixa o seu)
-assets/mano/*.pkl
-assets/mano/*.npz
-assets/mano/*.zip
-assets/mano/calibracao_mao_aberta.json
-
 # Sistema e editores
 Thumbs.db
 desktop.ini
 .DS_Store
 .vscode/
 .idea/
+
+# Configurações do Claude Code (ficam só na máquina de quem usa)
+.claude/

@@ -1,9 +1,9 @@
 """
 Banco local (SQLite, um arquivo só) com pacientes e sessões.
 
-Versão de teste: use apenas dados fictícios. Dado de saúde é dado pessoal
-sensível (LGPD, art. 11); antes de qualquer uso com pacientes reais este banco
-precisa de controle de acesso, criptografia e consentimento.
+Dado de saúde é dado pessoal sensível (LGPD, art. 11): no uso com pacientes
+reais, o computador precisa de controle de acesso, criptografia do disco e
+consentimento dos participantes (o banco fica só nesta máquina).
 """
 
 import datetime

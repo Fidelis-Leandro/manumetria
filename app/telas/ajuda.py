@@ -9,12 +9,13 @@ from app.componentes.cabecalho import ScreenHeader
 from app import glossario
 from app.tema import *  # noqa: F401,F403
 
+RESEARCH_NOTE = "ManuMetria · Software de pesquisa. Não é dispositivo médico registrado na ANVISA."
+
 # (âncora, título, corpo em HTML simples ou lista de termos do glossário)
 SECTIONS = [
     ("avaliar", "Como fazer uma avaliação", """
 <ol>
-<li>Em <b>Pacientes</b>, abra a ficha (dois cliques) ou cadastre um paciente novo
-    (nesta versão de teste, só dados fictícios).</li>
+<li>Em <b>Pacientes</b>, abra a ficha (dois cliques) ou cadastre um paciente novo.</li>
 <li>Na ficha, clique em <b>Nova avaliação</b>. A câmera leva alguns segundos para abrir.</li>
 <li>Peça para o paciente mostrar a mão com a <b>palma voltada para a câmera</b>, a cerca de 50 cm.</li>
 <li><b>Calibração</b>: o sistema pede a mão aberta e parada por 2 segundos. Ele mede o tremor
@@ -55,7 +56,7 @@ SECTIONS = [
 <li>O erro cresce quando a mão gira: em teste com mão renderizada, o erro médio variou de 6° a 36°
     conforme a vista. Por isso só entram na medida os quadros com a palma até 60° da frente.</li>
 <li>Com uma câmera só, dedos escondidos atrás de um objeto ou da própria mão não são medidos.</li>
-<li>Versão de teste: use apenas dados fictícios. Os dados ficam só neste computador.</li>
+<li>Os dados ficam só neste computador (pasta <i>dados_locais</i>); nada é enviado para a internet.</li>
 </ul>"""),
 ]
 
@@ -67,6 +68,7 @@ def help_html():
         if isinstance(body, list):                  # termos do glossário
             body = "".join(glossario.help_html(key) for key in body)
         parts.append(f"<a name='{anchor}'></a><h2 style='color:{TEXT}; margin-top:18px;'>{title}</h2>" + body)
+    parts.append(f"<p style='color:{MUTED}; font-size:12px; margin-top:24px;'>{RESEARCH_NOTE}</p>")
     return f"<div style='color:{TEXT}; font-size:14px; line-height:140%;'>{''.join(parts)}</div>"
 
 

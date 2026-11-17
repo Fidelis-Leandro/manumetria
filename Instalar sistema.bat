@@ -1,9 +1,9 @@
 @echo off
-rem Instala o sistema de avaliacao da mao: ambiente Python, pacotes, modelo do
+rem Instala o ManuMetria: ambiente Python, pacotes, modelo do
 rem MediaPipe, testes e pacientes ficticios de demonstracao. Pode rodar de novo.
 cd /d "%~dp0"
 echo.
-echo === Instalacao do sistema de avaliacao da mao ===
+echo === Instalacao do ManuMetria ===
 echo.
 
 rem --- 1. Python 3.11 (as versoes dos pacotes foram testadas com ele)
@@ -49,8 +49,7 @@ echo [5/5] Rodando os testes e criando os pacientes ficticios de demonstracao ..
 
 echo.
 echo === Instalacao concluida ===
-echo Abra o sistema com "Abrir sistema.bat" (webcam) ou "Abrir simulacao.bat" (sem camera).
-echo Mao 3D (opcional): veja assets\mano\LEIA-ME.txt e depois rode Instalar mao 3D.bat.
+echo Abra o ManuMetria com "Abrir sistema.bat" (webcam) ou "Abrir simulacao.bat" (sem camera).
 echo.
 pause
 exit /b 0

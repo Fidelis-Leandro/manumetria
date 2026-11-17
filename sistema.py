@@ -1,5 +1,5 @@
 """
-Avaliação da mão - sistema de teste (tela do profissional). Ponto de entrada.
+ManuMetria: avaliação cinemática da mão por visão computacional. Ponto de entrada.
 
 Executar:  .venv\\Scripts\\python.exe sistema.py                  (webcam 0)
            .venv\\Scripts\\python.exe sistema.py --sim            (mão simulada)
@@ -39,7 +39,7 @@ def make_source_factory(args):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Avaliação da mão - sistema de teste")
+    parser = argparse.ArgumentParser(description="ManuMetria - avaliação cinemática da mão por visão computacional")
     parser.add_argument("--sim", action="store_true", help="usar a mão simulada")
     parser.add_argument("--cam", type=int, default=0, help="índice da webcam (padrão 0)")
     parser.add_argument("--replay", metavar="ARQUIVO",
@@ -55,6 +55,8 @@ def main():
     if abs(scale - 1.0) > 0.01:
         os.environ["QT_SCALE_FACTOR"] = f"{scale:g}"  # precisa vir antes do QApplication
     app = QtWidgets.QApplication(sys.argv)
+    app.setApplicationName("ManuMetria")
+    app.setApplicationDisplayName("ManuMetria")
     kwargs = {"db_path": args.banco} if args.banco else {}
     win = AppWindow(make_source_factory(args), **kwargs)
     win.show()

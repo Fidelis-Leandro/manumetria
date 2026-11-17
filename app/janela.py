@@ -31,7 +31,7 @@ from nucleo.caminhos import DB_PATH, REPORTS_DIR
 class AppWindow(QtWidgets.QMainWindow):
     def __init__(self, source_factory, db_path=DB_PATH):
         super().__init__()
-        self.setWindowTitle("Avaliação da mão")
+        self.setWindowTitle("ManuMetria")
         self.resize(1366, 768)
         self.setStyleSheet(APP_CSS)
         self.db = Banco(db_path)

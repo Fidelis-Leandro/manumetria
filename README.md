@@ -1,114 +1,153 @@
-# Goniometria digital da mão — versão de testes
+# ManuMetria
 
-Sistema que mede os movimentos da mão com uma **webcam comum**, sem marcadores, para profissionais de
+**Avaliação cinemática da mão por visão computacional**
+
+O ManuMetria mede os movimentos da mão com uma **webcam comum**, sem marcadores, para profissionais de
 reabilitação. A câmera encontra 21 pontos da mão (MediaPipe) e o sistema calcula, ao vivo, os ângulos de
-cada articulação dos dedos (MCP, PIP, DIP e IP do polegar), o TAM (total active motion), as repetições e a
-qualidade do movimento. As avaliações ficam numa ficha por paciente, com a evolução ao longo do tempo.
+cada articulação dos dedos (MCP, PIP, DIP e IP do polegar), o TAM (*total active motion*), as repetições e a
+qualidade do movimento. Uma mão 3D desenhada pelo próprio sistema mostra, por cores, a situação de cada
+articulação. As avaliações ficam numa ficha por paciente, com a evolução ao longo do tempo, relatório em
+PDF e exportação em CSV.
 
-> **Versão de testes, para avaliação das funcionalidades.** Use apenas dados **fictícios**. Os dados ficam
-> só no computador onde o sistema está instalado (pasta `dados_locais/`), nada é enviado para a internet.
+> Software de pesquisa. Não é dispositivo médico registrado na ANVISA.
 
 ---
 
-## Instalação rápida (Windows 10 ou 11)
+## Requisitos
 
-**Precisa de:** Windows 10/11, **Python 3.11** (64 bits), internet durante a instalação, cerca de 1 GB de
-espaço livre e, para medir de verdade, uma webcam (sem câmera dá para testar com a mão simulada).
+- Windows 10 ou 11 (64 bits);
+- **Python 3.11** (64 bits);
+- internet durante a instalação e cerca de 1 GB de espaço livre;
+- uma webcam, para medir de verdade (sem câmera, dá para usar a mão simulada);
+- placa de vídeo com OpenGL 2.0 ou superior (qualquer computador recente).
 
-1. Baixe o projeto: no GitHub, **Code → Download ZIP** (e descompacte), ou `git clone` do repositório.
-2. Se ainda não tiver o Python 3.11: abra o PowerShell e rode
+## Instalação passo a passo
+
+1. **Baixe o projeto**: no GitHub, **Code → Download ZIP** (e descompacte), ou `git clone` do repositório.
+2. **Instale o Python 3.11**, se ainda não tiver: no PowerShell, rode
    `winget install -e --id Python.Python.3.11`
    (ou baixe em <https://www.python.org/downloads/release/python-3119/>, marcando *Add python.exe to PATH*).
-3. Dê dois cliques em **`Instalar sistema.bat`**. Ele cria o ambiente Python só deste projeto (`.venv`),
-   instala os pacotes, baixa o modelo de detecção da mão, roda os testes automáticos e cria 3 pacientes
-   fictícios de demonstração. Leva de 2 a 10 minutos na primeira vez.
-4. Abra o sistema:
+3. **Dê dois cliques em `Instalar sistema.bat`.** Ele:
+   - cria o ambiente Python só deste projeto (`.venv`);
+   - instala os pacotes do `requirements.txt`;
+   - baixa o modelo de detecção da mão do MediaPipe (`hand_landmarker.task`);
+   - roda os testes automáticos;
+   - cria 3 pacientes fictícios de demonstração.
+
+   Leva de 2 a 10 minutos na primeira vez e termina com `=== Instalacao concluida ===`.
+4. **Abra o ManuMetria:**
    - **`Abrir sistema.bat`**: com a webcam;
    - **`Abrir simulacao.bat`**: com uma mão simulada (não precisa de câmera).
 
-### Instalando com o Claude no VS Code
+O passo a passo manual (e a solução dos problemas mais comuns) está em [INSTALACAO.md](INSTALACAO.md).
 
-Abra a pasta do projeto no VS Code e peça ao Claude, por exemplo:
+## Como usar
 
-> Leia o README.md e o INSTALACAO.md deste projeto, instale todas as dependências, rode os testes e abra o
-> sistema.
+1. **Pacientes** (tela inicial): cadastre um paciente ou abra a ficha de um paciente existente (dois cliques).
+2. Na **ficha**, clique em **Nova avaliação**.
+3. Peça ao paciente para mostrar a mão com a **palma voltada para a câmera**, a cerca de 50 cm, com boa luz.
+4. **Calibração**: o sistema pede a mão aberta e parada por 2 segundos.
+5. Peça o movimento (por exemplo, abrir e fechar a mão o máximo possível, algumas vezes). Os cartões dos
+   dedos contam os movimentos ao vivo; clique num dedo para ver os detalhes.
+6. A tela de avaliação abre com a **câmera** em destaque e a **mão 3D** na miniatura do canto (clique na
+   miniatura, ou nos botões *Câmera* / *Modelo 3D*, para trocar). Na mão 3D, cada esfera de articulação tem a cor do seu dedo, conforme o % do normal do TAM ativo na
+   sessão: vermelho abaixo de 50%, amarelo de 50 a 75% e verde acima de 75% (cinza enquanto não há
+   medidas). Arraste para girar e passe o mouse sobre uma articulação para ver o nome e os valores dela.
+7. Clique em **Encerrar sessão**. No relatório, escreva as observações, faça o **reteste** quando indicado e
+   **salve na ficha**. Depois, gere o **PDF** ou o **CSV**.
+8. A **ficha** mostra a evolução (gráfico, mapa, comparação entre avaliações). A tela **Ajuda** explica cada
+   medida; passar o mouse sobre um número também mostra a explicação.
 
-O [INSTALACAO.md](INSTALACAO.md) tem o passo a passo detalhado para o Claude, com as verificações e as
-soluções para os problemas mais comuns.
+Para conhecer o sistema com os pacientes fictícios: abra a ficha do **João Pereira (fictício)** (tendões
+flexores, zona II) ou da **Maria Souza (fictícia)** (fratura do rádio distal, com alta e platô).
 
-### Mão 3D (opcional)
-
-A tela de avaliação mostra uma mão 3D com pele (modelo **MANO**, do Max-Planck). A licença do MANO não
-permite redistribuir os arquivos, então **cada pessoa baixa com a própria conta** (gratuita, uso acadêmico):
-
-1. Crie uma conta em <https://mano.is.tue.mpg.de> e aceite a licença.
-2. Em **Download**, baixe **Models & Code** (`mano_v1_2.zip`) para a pasta Downloads.
-3. Dê dois cliques em **`Instalar mao 3D.bat`** (ele acha o zip em Downloads, mesmo descompactado ou dentro
-   do OneDrive), ou peça ao Claude: *"Baixei o MANO, instale a mão 3D seguindo o passo 7 do INSTALACAO.md."*
-
-Sem o MANO o sistema funciona e mede normalmente; só a mão 3D não aparece (a tela mostra um aviso no lugar).
-
----
-
-## Roteiro de teste (10 a 15 minutos)
-
-1. **Lista de pacientes**: três pacientes fictícios, com situação (em tratamento / alta), % do normal e
-   tendência. Clique nos títulos das colunas para ordenar; use as abas *Em tratamento / Alta / Todos*.
-2. **Ficha do João** (tendões flexores, zona II): veja o **Resumo** (aponta a DIP do anelar e "sugere
-   déficit do flexor profundo"), clique em **Mapa** no cartão de evolução e em uma célula vermelha.
-   Passe o mouse sobre os pontos do gráfico (data, valor e observação da avaliação).
-3. **Ficha da Maria** (fratura do rádio distal): evolução até a **alta**, com **platô** nas últimas avaliações.
-   Teste o gráfico em **Semanas desde a lesão** e o botão **Comparar** (primeira × última).
-4. **Nova avaliação** (com a webcam ou a simulação): mão aberta e parada para calibrar, depois abrir e fechar
-   a mão algumas vezes. Clique nos dedos, nas abas *Amplitude / Repetições / Padrão / Mão* e acompanhe a linha
-   **Repetições fortes**. Ao encerrar, o sistema avisa se a medida ficou pouco confiável.
-5. **Relatório**: faça um **reteste**, salve na ficha, gere o **PDF** e o **CSV**.
-6. **Ajuda** (botão no topo): passo a passo e o significado de cada medida. Em quase todos os números da
-   tela, **passar o mouse** mostra a explicação (o cursor vira uma seta com "?").
-
----
-
-## O que o sistema faz
+### O que o sistema faz
 
 | Tela | Funções |
 |---|---|
-| **Pacientes** | cadastro (dados fictícios), busca, filtro por situação, % do normal, tendência, destaque de quem está sem avaliação há mais de 3 semanas, exportação para pesquisa |
-| **Ficha** | dados do paciente, resumo clínico por regras, lista de avaliações, gráfico de evolução (datas ou semanas desde a lesão), mapa da evolução, comparação entre avaliações, exclusão de avaliação |
-| **Avaliação** | câmera + mão 3D, contagem de movimentos por dedo, medidas ao vivo, aviso de mão de lado / longe / perto, qualidade da captura, contador de repetições fortes, conferência ao encerrar |
+| **Pacientes** | cadastro, busca, filtro por situação, % do normal, tendência, destaque de quem está sem avaliação há mais de 3 semanas, exportação para pesquisa |
+| **Ficha** | dados do paciente, resumo por regras, lista de avaliações, gráfico de evolução (datas ou semanas desde a lesão), mapa da evolução, comparação entre avaliações, exclusão de avaliação |
+| **Avaliação** | câmera + mão 3D com as articulações coloridas, contagem de movimentos por dedo, medidas ao vivo, aviso de mão de lado / longe / perto, qualidade da captura, contador de repetições fortes, conferência ao encerrar |
 | **Relatório** | resultado por dedo, observações do profissional, reteste, PDF e CSV |
 | **Configurações** | instituição e logotipo do PDF, tema claro/escuro, tamanho da interface, recálculo de avaliações antigas |
 | **Ajuda** | como avaliar, como medir bem, glossário de todas as medidas, limites do sistema |
 
-**Medidas** (detalhes na tela de Ajuda): flexão de cada articulação, TAM e TAM ativo (% do normal),
-déficit de extensão, arco de movimento e arco funcional (Bain et al., 2015), escore de Strickland,
-distância polpa–palma, repetições (movimento / parcial / completa), velocidades de flexão, extensão e pico,
-suavidade (SPARC), ciclo, cadência e regularidade, indicadores de fadiga, consistência do esforço,
-independência dos dedos e contribuição de cada articulação, abertura dos dedos e do polegar, tremor,
-confiabilidade da avaliação, erro de medida por teste–reteste (MDC), mudança real, tendência e platô.
+**Medidas** (detalhes na tela Ajuda): flexão de cada articulação, TAM e TAM ativo (% do normal), déficit de
+extensão, arco de movimento e arco funcional (Bain et al., 2015), escore de Strickland, distância
+polpa–palma, repetições (movimento / parcial / completa), velocidades de flexão, extensão e pico, suavidade
+(SPARC), ciclo, cadência e regularidade, indicadores de fadiga, consistência do esforço, independência dos
+dedos e contribuição de cada articulação, abertura dos dedos e do polegar, tremor, confiabilidade da
+avaliação, erro de medida por teste–reteste (MDC), mudança real, tendência e platô.
 
-## Limites
+### Tratamento do sinal
+
+Os ângulos exibidos são calculados quadro a quadro a partir dos pontos do MediaPipe, **sem filtro de
+suavização** (não há filtro de média móvel exponencial nem de Kalman). O que o código faz:
+
+- **descarta** quadros com ângulos fisicamente impossíveis (fora de −60° a 130°) e quadros com a mão de
+  lado (palma a mais de 60° da frente), como se fossem falhas de detecção;
+- em falhas curtas de detecção (até 0,4 s), **mantém a última pose** e não atualiza as medidas; o lado da
+  mão (direita/esquerda) é fixado na calibração;
+- o **contador de repetições** decide sobre a média dos últimos 8 quadros do TAM, com histerese igual à
+  sensibilidade medida na calibração (3 × o tremor parado); os valores mostrados continuam crus;
+- a **velocidade de pico** e a **suavidade** (SPARC) usam uma derivada por mínimos quadrados em 5 pontos
+  (Savitzky–Golay de 1ª ordem) sobre o TAM cru de cada repetição, reamostrado em grade uniforme de 30 Hz.
+
+### Limites
 
 - As medidas são **estimativas por câmera comum**, sem marcadores: não substituem a goniometria.
 - O erro aumenta com a mão de lado; por isso só entram na medida os quadros com a palma até 60° da frente.
 - Com uma câmera só, dedos escondidos atrás de outros não são medidos.
-- A interpretação (resumo, mudança real, platô) é feita por regras explícitas: apoio à decisão, não diagnóstico.
+- A interpretação (resumo, mudança real, platô) é feita por regras explícitas: apoio à decisão, não
+  diagnóstico.
 
-## Dados e privacidade
+### Dados e privacidade
 
-- Pacientes, avaliações e pontos da mão ficam em `dados_locais/` (SQLite + arquivos `.npz`, sem vídeo).
-  Essa pasta **não vai para o GitHub** (está no `.gitignore`).
-- Não cadastre pacientes reais nesta versão de testes.
+- Pacientes, avaliações e pontos da mão ficam **só neste computador**, em `dados_locais/` (SQLite +
+  arquivos `.npz`, sem vídeo). Nada é enviado para a internet. Essa pasta não vai para o GitHub
+  (`.gitignore`).
+- Dado de saúde é dado pessoal sensível (LGPD, art. 11): no uso com pacientes reais, proteja o computador
+  (senha, criptografia do disco) e obtenha o consentimento dos participantes.
 - Para recriar os pacientes fictícios: `.venv\Scripts\python.exe tools\criar_demonstracao.py`.
 
-## Para quem for mexer no código
+## Estrutura de pastas
 
-- Estrutura do projeto, como acrescentar uma medida e combinados do projeto: [DESENVOLVIMENTO.md](DESENVOLVIMENTO.md).
-- Testes automáticos: `.venv\Scripts\python.exe tests\testar.py`.
-- Opções de linha de comando: `.venv\Scripts\python.exe sistema.py --help`
-  (`--sim` mão simulada, `--cam 1` outra câmera, `--resolucao 1280x720`, `--banco outro.sqlite`).
+```
+sistema.py               ponto de entrada (python sistema.py --help mostra as opções)
+nucleo/                  cálculo, sem interface (numpy): câmera, cinemática, medidas, estabilizador
+app/                     interface (PyQt5): janela, telas, componentes, mão 3D, banco e relatórios
+  telas/                 uma tela por arquivo (pacientes, ficha, avaliação, relatório, configurações, ajuda)
+  componentes/           partes das telas (palco 3D, mão 3D procedural em mao3d.py, painéis, gráficos)
+  dados/                 banco SQLite, configurações, resultados, interpretação, PDF, exportação
+assets/                  logotipo padrão do relatório
+tests/                   testes automáticos (tests\testar.py roda todos)
+tools/                   pacientes de demonstração e análise de gravações
+docs/                    imagens da documentação
+Instalar sistema.bat     instalação completa no Windows
+Abrir sistema.bat        abre com a webcam
+Abrir simulacao.bat      abre com a mão simulada
+gerar_hash_registro.bat  pacote e hash SHA-512 para o registro de software (ver abaixo)
+```
 
-## Licenças de terceiros
+Detalhes para quem for mexer no código: [DESENVOLVIMENTO.md](DESENVOLVIMENTO.md). Bibliotecas de terceiros e
+licenças: [AVISOS_TERCEIROS.md](AVISOS_TERCEIROS.md).
 
-- **MediaPipe** (Google) e o modelo `hand_landmarker.task`: Apache 2.0 (o modelo é baixado na instalação).
-- **MANO** (Max-Planck): licença de pesquisa não comercial; não incluído (cada usuário baixa o seu).
-- **PyQt5**: GPL v3. **pyqtgraph**, **NumPy**, **PyOpenGL**, **OpenCV**: licenças livres (MIT/BSD/Apache).
+Linha de comando: `.venv\Scripts\python.exe sistema.py --help` (`--sim` mão simulada, `--cam 1` outra
+câmera, `--resolucao 1280x720`, `--banco outro.sqlite`, `--replay ARQUIVO` toca uma gravação de pontos).
+
+## Pacote para o registro de software (INPI)
+
+O `gerar_hash_registro.bat` (que chama `tools\gerar_hash_registro.py`) gera um ZIP só com o código-fonte e
+a documentação (sem `.git`, `.venv`, `__pycache__`, `dados_locais/`, relatórios, gravações nem o modelo
+baixado do MediaPipe), calcula o **SHA-512** do ZIP e salva o ZIP e um `.txt` com o hash, a data e a lista
+de arquivos na pasta **`REGISTRO_INPI`**, ao lado da pasta do projeto (fora do repositório).
+
+- Rode esse script **somente depois da aprovação final do orientador**, com a versão definitiva.
+- O ZIP gerado **nunca mais pode ser alterado**: qualquer mudança, mesmo de um caractere, muda o hash.
+  Não descompacte e recompacte; não renomeie arquivos dentro dele.
+- Guarde o ZIP e o `.txt` **em mais de um lugar** (por exemplo: HD externo, nuvem institucional e uma cópia
+  com o NIT).
+
+## Autor
+
+**Leandro Fidelis**, Universidade Federal de Ciências da Saúde de Porto Alegre (UFCSPA), laboratório NERV.

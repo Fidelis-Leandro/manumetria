@@ -14,5 +14,4 @@ REPORTS_DIR = os.path.join(ROOT, "relatorios")
 
 # arquivos que acompanham o sistema ou são baixados na instalação
 ASSETS_DIR = os.path.join(ROOT, "assets")
-MANO_DIR = os.path.join(ASSETS_DIR, "mano")
 MODEL_PATH = os.path.join(ROOT, "hand_landmarker.task")   # modelo do MediaPipe

@@ -1,7 +1,8 @@
-# Avaliação cinemática da mão (sistema de teste)
+# ManuMetria — desenvolvimento
 
-Mede os movimentos da mão com uma webcam comum (MediaPipe), sem marcadores,
-para profissionais de reabilitação. **Versão de teste: use apenas dados fictícios.**
+ManuMetria: avaliação cinemática da mão por visão computacional (webcam comum +
+MediaPipe, sem marcadores). Este arquivo é para quem for mexer no código; o uso
+e a instalação estão no README.md.
 
 ## Como rodar
 
@@ -24,7 +25,6 @@ para profissionais de reabilitação. **Versão de teste: use apenas dados fict�
 | `dados_locais/config.json` | Configurações (instituição, logotipo, tema, tamanho) |
 | `dados_locais/pontos/` | pontos da mão de cada avaliação salva (.npz, sem vídeo) |
 | `relatorios/` | PDFs, CSVs e exportações para pesquisa |
-| `assets/mano/` | modelo MANO da mão 3D (veja o LEIA-ME de lá) |
 | `assets/logo_relatorio.png` | logotipo do PDF |
 
 ## Como o código está organizado
@@ -64,7 +64,7 @@ As dependências vão num sentido só: `app/` usa `nucleo/`, e `nucleo/` nunca i
 | `icones.py` | ícones desenhados em SVG |
 | `simulacao.py` | mão simulada (`--sim`) |
 | `telas/` | uma tela por arquivo: pacientes, ficha, avaliação, relatório, configurações, ajuda |
-| `componentes/` | partes das telas: palco 3D, mão 3D com pele (`mao3d.py`, modelo MANO), painel do dedo (`painel.py`), peças pequenas como réguas, barras e abas (`pecas.py`), mapa da evolução (`mapa.py`), gráfico, barra do topo, dicas, diálogos |
+| `componentes/` | partes das telas: palco 3D, mão 3D procedural (`mao3d.py`: cilindros, esferas e palma gerados a partir dos 21 pontos), painel do dedo (`painel.py`), peças pequenas como réguas, barras e abas (`pecas.py`), mapa da evolução (`mapa.py`), gráfico, barra do topo, dicas, diálogos |
 | `dados/` | banco, configurações, resultados, interpretação, PDF, exportação, recálculo |
 
 **Testes** — pasta `tests/`: `testar.py` (roda todos os testes), `test_*.py` e
@@ -72,7 +72,8 @@ As dependências vão num sentido só: `app/` usa `nucleo/`, e `nucleo/` nunca i
 
 **Ferramentas** — pasta `tools/`: `criar_demonstracao.py` (3 pacientes fictícios com avaliações
 simuladas pelo mesmo motor da câmera), `analisar_gravacao.py` (passa um arquivo de pontos pelo motor e
-mostra a linha do tempo) e `instalar_mano.py` (usado pelo `Instalar mao 3D.bat`).
+mostra a linha do tempo) e `gerar_hash_registro.py` (pacote e hash SHA-512 para o registro de software,
+chamado pelo `gerar_hash_registro.bat`).
 
 ## Como acrescentar uma medida nova
 
@@ -99,8 +100,12 @@ O banco se atualiza sozinho ao abrir: colunas novas são acrescentadas em `Banco
 
 ## Combinados do projeto
 
-- Os números mostrados são **crus**: nada de filtro de suavização na tela (a média
-  de 8 quadros serve só para o contador de repetições decidir).
+- Os números mostrados são **crus**: nada de filtro de suavização na tela (não há
+  EMA nem Kalman). A média de 8 quadros serve só para o contador de repetições
+  decidir, e a derivada de Savitzky–Golay (5 pontos) só para a velocidade de pico
+  e a suavidade (SPARC).
 - Interpretação por regras explícitas, com "sugestivo de": apoio à decisão, não diagnóstico.
 - Textos da interface em português, sem emojis.
-- MANO: licença de pesquisa não comercial (veja `assets/mano/MANO_LICENSE.txt`).
+- A mão 3D é gerada pelo próprio código (sem modelo de terceiros). A cor de cada
+  articulação segue a mesma regra dos cartões dos dedos (`kin.grade`).
+- Bibliotecas de terceiros e licenças: `AVISOS_TERCEIROS.md`.

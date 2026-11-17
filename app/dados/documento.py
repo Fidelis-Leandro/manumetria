@@ -303,14 +303,14 @@ def build_document(patient, results, notes, history, cfg, density=PRINT_DENSITY,
         f"<h3{joints_break}>Articulações</h3>{joints}"
         f"<h3>Qualidade do movimento</h3>{quality}"
         f"<hr style='color:{LINE};'><p style='color:{INK_MUTED}; font-size:8pt;'>"
-        f"Gerado em {generated} · Ambiente de teste: dados fictícios.</p>"
+        f"Gerado em {generated} pelo ManuMetria (software de pesquisa).</p>"
         f"</body></html>")
     doc.setHtml(body)
     # depois do setHtml (que limpa o título): nome do PDF e rodapé de cada página
     ident = patient.get("identificacao") or ""
     doc.setMetaInformation(QtGui.QTextDocument.DocumentTitle, f"{cfg['titulo']} - {ident}")
     doc.setProperty("rodape", f"{ident} · avaliação de {fmt_datetime(results['inicio'])} · "
-                              "ambiente de teste, dados fictícios")
+                              "ManuMetria")
     return doc
 
 
