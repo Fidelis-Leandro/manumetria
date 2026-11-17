@@ -9,9 +9,10 @@ Medidas clínicas além da cinemática básica (numpy puro, sem interface):
   - confiabilidade da sessão
 
 Padrões posturais (pescoço de cisne, botoeira, garra) ficaram de fora: na
-gravação real de uma mão saudável aberta o MediaPipe marcou até 48° de flexão na
-PIP e -41° de hiperextensão na MCP; qualquer regra de postura marcaria a mão
-saudável. Precisam de validação com goniômetro antes.
+gravação de referência (mão saudável), com os quatro dedos longos abertos (TAM
+abaixo de 60°), o MediaPipe marcou até 44° de flexão na PIP e -45° de
+hiperextensão na MCP; qualquer regra de postura marcaria a mão saudável.
+Precisam de validação com goniômetro antes.
 """
 
 import numpy as np
@@ -19,8 +20,9 @@ import numpy as np
 from nucleo import kinematics as kin
 
 # -----------------------------------------------------------------------------
-# Arco funcional (Bain et al., J Hand Surg Eur 2015): faixa de flexão usada em
-# atividades diárias, dedos longos. Sem referência equivalente para o polegar.
+# Arco funcional (Bain et al., J Hand Surg Eur 2015;40(4):406-411,
+# doi:10.1177/1753193414533754; valores conferidos no resumo): faixa de flexão
+# usada em atividades diárias, dedos longos. Sem referência equivalente para o polegar.
 # -----------------------------------------------------------------------------
 FUNCTIONAL_ROM = {"MCP": (19.0, 71.0), "PIP": (23.0, 87.0), "DIP": (10.0, 64.0)}
 
@@ -158,17 +160,20 @@ class HandMeasures:
 # Tremor nos trechos com a mão parada
 # -----------------------------------------------------------------------------
 TREMOR_WINDOW_S = 2.0
-TREMOR_BAND = (3.0, 12.0)         # Hz: repouso parkinsoniano ~4-6, fisiológico ~8-12
-TREMOR_PEAK_RATIO = 4.0           # pico >= 4x a mediana da banda = oscilação rítmica
+TREMOR_BAND = (3.0, 12.0)         # Hz: valores típicos citados (fonte primária não conferida):
+                                  # repouso parkinsoniano ~4-6, fisiológico ~8-12
+TREMOR_PEAK_RATIO = 4.0           # pico >= 4x a mediana da banda = oscilação rítmica (limiar escolhido)
 _GRID = np.arange(0.0, 15.01, 0.25)
 
 
 class TremorMeter:
     """Junta trechos de ~2 s com a mão parada (TAM de todos os dedos variando
     menos que kin.STILL_MAX_STD) e procura uma oscilação rítmica na posição
-    média das pontas dos dedos em relação ao punho. O MediaPipe tem ruído de
-    fundo de cerca de 1 mm, espalhado por todas as frequências: só um pico bem
-    acima da mediana do espectro conta como oscilação rítmica."""
+    média das pontas dos dedos em relação ao punho. Mesmo sem tremor há
+    variação de fundo (ruído do MediaPipe + tremor fisiológico: RMS de ~1,2 mm na
+    mão saudável parada da gravação de referência), espalhada pelas frequências:
+    só um pico bem acima da mediana do espectro conta como oscilação rítmica.
+    Resolução em frequência: 0,5 Hz (janelas de 2 s)."""
 
     def __init__(self):
         self.buf = []
@@ -239,10 +244,10 @@ class TremorMeter:
 # Distância da câmera
 # -----------------------------------------------------------------------------
 # Tamanho da mão na imagem: punho -> base do dedo médio, em fração da altura.
-# Nas gravações reais, a ~50 cm: 0,27-0,29. A mão inclinada parece menor por um
-# instante; por isso só avisa depois de DISTANCE_FRAMES quadros seguidos.
+# Na gravação de referência, a ~50 cm: mediana 0,27 (P10-P90 0,23-0,29). A mão
+# inclinada parece menor por um instante; por isso só avisa depois de DISTANCE_FRAMES quadros seguidos.
 HAND_FAR, HAND_NEAR = 0.13, 0.50
-DISTANCE_FRAMES = 15                # ~0,5 s
+DISTANCE_FRAMES = 15                # ~0,5 s a 30 quadros/s (~1 s a 15)
 
 
 def hand_image_size(img, aspect):

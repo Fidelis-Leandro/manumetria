@@ -274,48 +274,22 @@ check("recálculo: registro sem nas_medidas = medidas com os dados brutos",
       new["dedos"] == analisar(rows, filtro="desligada").results(rows[-1]["t"], "")["dedos"])
 
 
-# ---------------------------------------- padrão = v1.0.0 na gravação de referência
-def v100_results(recording):
-    """Resultados da v1.0.0 (worktree temporário da tag) na mesma gravação, em JSON."""
-    import json
-    import shutil
-    import subprocess
-    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    tmp = tempfile.mkdtemp(prefix="manumetria_v100_")
-    tree = os.path.join(tmp, "v1.0.0")
-    try:
-        subprocess.run(["git", "-C", root, "worktree", "add", "--detach", tree, "v1.0.0"],
-                       check=True, capture_output=True)
-        code = ("import json, sys; sys.path.insert(0, sys.argv[1]);"
-                "from app.avaliador import analisar; from nucleo import capture;"
-                "rows = capture.load_recording(sys.argv[2]);"
-                "res = analisar(rows).results(rows[-1]['t'], 'gravação');"
-                f"print(json.dumps({{k: res[k] for k in {MEASURES!r}}}, sort_keys=True))")
-        proc = subprocess.run([sys.executable, "-B", "-c", code, tree, recording], cwd=tree,
-                              check=True, capture_output=True, text=True, encoding="utf-8")
-        return json.loads(proc.stdout)
-    finally:
-        subprocess.run(["git", "-C", root, "worktree", "remove", "--force", tree], capture_output=True)
-        subprocess.run(["git", "-C", root, "worktree", "prune"], capture_output=True)
-        shutil.rmtree(tmp, ignore_errors=True)
-
-
+# ------------------- padrão (só na exibição) = Desligada, na gravação de referência
+# Com a suavização só na exibição ao vivo, as medidas têm de ser idênticas às do modo Desligada
+# nesta mesma versão: o filtro não pode vazar para as medidas. (Até a 1.1.0 este teste comparava
+# com a tag v1.0.0; a 1.2.0 mudou as medidas de propósito: goniometria ISB e repetições nos dados
+# brutos, docs/AUDITORIA_CALCULOS.md.)
 RECORDING = os.path.join(os.path.dirname(os.path.abspath(__file__)), "dados", "gravacao_referencia.npz")
-try:
-    old = v100_results(RECORDING)
-except Exception as exc:                            # sem git ou sem a tag (ex.: pacote do registro)
-    print(f"[pulado] comparação com a v1.0.0: {exc}")
-else:
-    import json
-    rows = capture.load_recording(RECORDING)
-    app_default = Avaliador(filtro=filtros.PADRAO, nas_medidas=False)   # o que a tela usa no padrão
-    for raw in rows:
-        app_default.step(raw, raw["t"])
-    for name, res in (("analisar", analisar(rows).results(rows[-1]["t"], "gravação")),
-                      ("tela no padrão", app_default.results(rows[-1]["t"], "gravação"))):
-        now = json.loads(json.dumps({k: res[k] for k in MEASURES}, sort_keys=True))
-        check(f"padrão ({name}): gravação de referência idêntica à v1.0.0 (dedos, mão inteira, "
-              "confiabilidade)", now == old)
+rows = capture.load_recording(RECORDING)
+desligada = analisar(rows, filtro=filtros.DESLIGADA).results(rows[-1]["t"], "gravação")
+app_default = Avaliador(filtro=filtros.PADRAO, nas_medidas=False)   # o que a tela usa no padrão
+for raw in rows:
+    app_default.step(raw, raw["t"])
+for name, res in (("analisar", analisar(rows).results(rows[-1]["t"], "gravação")),
+                  ("tela no padrão", app_default.results(rows[-1]["t"], "gravação"))):
+    check(f"padrão ({name}): na gravação de referência, medidas idênticas às do modo Desligada "
+          "(dedos, mão inteira, confiabilidade)",
+          {k: res[k] for k in MEASURES} == {k: desligada[k] for k in MEASURES})
 
 print("\n" + ("Todos os testes passaram." if not failures else f"{len(failures)} falha(s): {failures}"))
 sys.exit(1 if failures else 0)

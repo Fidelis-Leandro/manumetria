@@ -41,24 +41,28 @@ SESSION_COLUMNS = [
     ("quadros_descartados", "Quadros descartados por ângulo impossível", "quadros"),
     ("tem_reteste", "A avaliação tem reteste (medição repetida logo depois)", "sim/nao"),
     ("arquivo_pontos", "Arquivo com os pontos da mão de cada quadro (.npz, pasta do projeto)", ""),
-    ("abertura_ind_med", "Abertura máxima entre indicador e médio (MCP < 30°)", "graus"),
-    ("abertura_med_ane", "Abertura máxima entre médio e anelar", "graus"),
-    ("abertura_ane_min", "Abertura máxima entre anelar e mínimo", "graus"),
+    ("abertura_ind_med", "Abertura máxima entre as falanges proximais do indicador e do médio, no plano da "
+                         "palma, só com a MCP dos dois até 30°", "graus"),
+    ("abertura_med_ane", "Abertura máxima entre médio e anelar (mesma regra)", "graus"),
+    ("abertura_ane_min", "Abertura máxima entre anelar e mínimo (mesma regra)", "graus"),
     ("abertura_total", "Soma das três aberturas", "graus"),
-    ("abertura_polegar", "Ângulo máximo entre os metacarpos do polegar e do indicador", "graus"),
-    ("tremor_ritmico", "Oscilação rítmica com a mão parada (pico >= 4x a mediana do espectro 3-12 Hz)", "sim/nao"),
-    ("tremor_frequencia_hz", "Frequência da oscilação rítmica", "Hz"),
-    ("tremor_rms_mm", "Variação (RMS) das pontas dos dedos com a mão parada; inclui ~1 mm de ruído", "mm"),
+    ("abertura_polegar", "Ângulo máximo entre o metacarpo do polegar e a linha punho-base do indicador", "graus"),
+    ("tremor_ritmico", "Oscilação rítmica com a mão parada (pico >= 4x a mediana do espectro 3-12 Hz, fora da "
+                       "borda inferior da faixa)", "sim/nao"),
+    ("tremor_frequencia_hz", "Frequência da oscilação rítmica (resolução de 0,5 Hz)", "Hz"),
+    ("tremor_rms_mm", "Variação (RMS 3D, mediana das janelas de 2 s) da posição média das 5 pontas dos dedos em "
+                      "relação ao punho, com a mão parada; inclui o ruído do MediaPipe e o tremor fisiológico "
+                      "(~1,2 mm na mão saudável da gravação de referência)", "mm"),
     ("tremor_segundos", "Tempo com a mão parada analisado", "s"),
 ]
 
 FINGER_DESCRIPTIONS = {
     "dedo": ("Dedo", ""),
     "movimentos": ("Repetições contadas (qualquer amplitude acima da sensibilidade)", "repetições"),
-    "parciais": ("Repetições com amplitude >= 25% do TAM normal e < 75%", "repetições"),
-    "completas": ("Repetições com amplitude >= 75% do TAM normal", "repetições"),
+    "parciais": ("Repetições com amplitude (dados brutos) >= 25% do TAM normal e < 75%", "repetições"),
+    "completas": ("Repetições com amplitude (dados brutos) >= 75% do TAM normal", "repetições"),
     "tam_ativo": ("TAM ativo = soma das flexões máximas - soma dos déficits de extensão", "graus"),
-    "pct_normal": ("TAM ativo em % do normal da literatura (260° dedos longos, 140° polegar)", "%"),
+    "pct_normal": ("TAM ativo em % do normal de referência (260° dedos longos, 140° polegar)", "%"),
     "tam_max_simultaneo": ("Maior soma das flexões num mesmo instante", "graus"),
     "flexao_max": ("Maior flexão da articulação na avaliação", "graus"),
     "flexao_min": ("Menor flexão (= extensão máxima; negativo = hiperextensão)", "graus"),
@@ -69,10 +73,16 @@ FINGER_DESCRIPTIONS = {
     "strickland_pct": ("Strickland: (flexão PIP + DIP - déficits) / 175°", "%"),
     "polpa_palma_cm": ("Menor distância estimada da ponta do dedo à palma (escala de mão média)", "cm"),
     "independencia_pct": ("Quanto os outros dedos ficaram parados enquanto este se movia", "%"),
-    "vel_flexao_media": ("Amplitude / tempo de subida, média das últimas 10 repetições", "graus/s"),
-    "vel_extensao_media": ("Amplitude da volta / tempo de descida, média das últimas 10", "graus/s"),
-    "vel_pico_media": ("Maior velocidade na flexão (derivada em 5 quadros), média das últimas 10 >= 15°", "graus/s"),
-    "suavidade_sparc": ("SPARC (Balasubramanian 2015); mais perto de 0 = mais suave", "adimensional"),
+    "vel_flexao_media": ("Amplitude (dados brutos) / tempo de subida, média das últimas 10 repetições. Tempo: do "
+                         "último instante a até meia sensibilidade do vale ao primeiro a até meia sensibilidade "
+                         "do pico, no TAM médio de 8 quadros (critério do sistema; pausas não entram)", "graus/s"),
+    "vel_extensao_media": ("Amplitude da volta (dados brutos) / tempo de descida (mesmo critério), média das "
+                           "últimas 10", "graus/s"),
+    "vel_pico_media": ("Maior velocidade na flexão (derivada de Savitzky-Golay em 5 pontos do TAM reamostrado a "
+                       "30 Hz), média das últimas 10 repetições de 15° ou mais", "graus/s"),
+    "suavidade_sparc": ("SPARC (Balasubramanian 2015) da norma das velocidades articulares do dedo, média de "
+                        "flexões e extensões das últimas 10 repetições de 15° ou mais; mais perto de 0 = mais "
+                        "suave", "adimensional"),
     "ciclo_s": ("Mediana do tempo entre inícios de repetições (últimas 10)", "s"),
     "cadencia_por_min": ("Repetições por minuto pelo ciclo", "repetições/min"),
     "regularidade": ("Regular (variação do ciclo < 15%), Moderada (< 30%) ou Irregular", ""),
@@ -81,9 +91,10 @@ FINGER_DESCRIPTIONS = {
     "tendencia_amplitude_pct": ("Variação da amplitude do início ao fim pela reta de regressão", "%"),
     "tendencia_velocidade_pct": ("Variação da velocidade de flexão do início ao fim pela reta", "%"),
     "consistencia_esforco_pct": ("Variação (CV) do TAM no pico entre as 5 repetições mais fortes", "%"),
-    "amplitude_primeira": ("Amplitude da primeira repetição", "graus"),
-    "amplitude_ultima": ("Amplitude da última repetição", "graus"),
-    "sensibilidade": ("Menor movimento contado (3x o tremor medido na calibração)", "graus"),
+    "amplitude_primeira": ("Amplitude da primeira repetição (pico - vale do TAM, dados brutos)", "graus"),
+    "amplitude_ultima": ("Amplitude da última repetição (pico - vale do TAM, dados brutos)", "graus"),
+    "sensibilidade": ("Menor movimento contado: 3x o desvio padrão do TAM parado na calibração, entre 2 e 30; "
+                      "5 sem calibração", "graus"),
 }
 
 RETEST_COLUMNS = [("reteste_pct_normal", "TAM ativo do reteste em % do normal", "%"),

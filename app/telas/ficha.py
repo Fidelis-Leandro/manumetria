@@ -63,8 +63,15 @@ def _link_joints(html):
     return _JOINT_NAME.sub(link, html)
 
 
-def _signed_change(delta, mdc, lower_is_better=False):
-    return interp.change(None if delta is None else (-delta if lower_is_better else delta), mdc)
+def _change(a, b, mdc, mode=None):
+    """Mudança de a (antes) para b (depois). mode: None = maior é melhor; "lower" = menor é
+    melhor; "ext" = flexão mínima, classificada pelo déficit de extensão (max(0, mínimo)):
+    diminuir o déficit é melhora, e aumentar a hiperextensão não é classificado."""
+    if a is None or b is None:
+        return None
+    if mode == "ext":
+        return interp.extension_change(a, b, mdc)
+    return interp.change(a - b if mode == "lower" else b - a, mdc)
 
 
 class EvolutionChart(pg.PlotWidget):
@@ -113,12 +120,12 @@ class EvolutionChart(pg.PlotWidget):
         self.scene().sigMouseMoved.connect(self._hover)
 
     @staticmethod
-    def _markers(values, levels, mdc, base, lower_is_better=False):
+    def _markers(values, levels, mdc, base, mode=None):
         """Cor, tamanho e contorno de cada ponto. levels = confiabilidade de cada
         avaliação: "media" ou "baixa" deixam o ponto vazado."""
         brushes, sizes, pens = [], [], []
         for i, v in enumerate(values):
-            c = None if i == 0 else _signed_change(v - values[i - 1], mdc, lower_is_better)
+            c = None if i == 0 else _change(values[i - 1], v, mdc, mode)
             color = CHANGE_COLOR.get(c, base)
             hollow = levels[i] in ("media", "baixa")
             brushes.append(qcolor(SURFACE if hollow else color))
@@ -209,13 +216,13 @@ class EvolutionChart(pg.PlotWidget):
             self.band.show()
         else:
             self.band.hide()
-        for key, curve, color, width, lower in (("max", self.joint_max, ACCENT, 3, False),
-                                                 ("min", self.joint_min, MOVE, 1.6, True)):
+        for key, curve, color, width, mode in (("max", self.joint_max, ACCENT, 3, None),
+                                                ("min", self.joint_min, MOVE, 1.6, "ext")):
             pts = [(x[i], s["resultados"]["dedos"][finger]["articulacoes"][metric][key], levels[i], s)
                    for i, s in enumerate(sessions)]
             pts = [p for p in pts if p[1] is not None]
             xs, ys = [p[0] for p in pts], [p[1] for p in pts]
-            brushes, sizes, pens = self._markers(ys, [p[2] for p in pts], mdc, color, lower)
+            brushes, sizes, pens = self._markers(ys, [p[2] for p in pts], mdc, color, mode)
             curve.setData(xs, ys, pen=pg.mkPen(color, width=width), symbol="o", symbolSize=sizes,
                           symbolBrush=brushes, symbolPen=pens)
             curve.setZValue(10)
@@ -283,11 +290,11 @@ class CompareDialog(QtWidgets.QDialog):
             rows.append(("Strickland (PIP + DIP)", pct(interp.finger_strickland(f, da)),
                          pct(interp.finger_strickland(f, db)), "%", 0, None, False))
             rows.append(("Polpa–palma (≈ cm)", da.get("polpa_palma_cm"), db.get("polpa_palma_cm"),
-                         " cm", 1, None, True))
+                         " cm", 1, None, "lower"))
         for ja, jb in zip(da["articulacoes"], db["articulacoes"]):
             n = ja["nome"]
             rows += [(f"{n}: flexão máxima", ja["max"], jb["max"], "°", 0, e_joint, False),
-                     (f"{n}: flexão mínima (extensão)", ja["min"], jb["min"], "°", 0, e_joint, True)]
+                     (f"{n}: flexão mínima (extensão)", ja["min"], jb["min"], "°", 0, e_joint, "ext")]
             if f != "thumb":
                 rows.append((f"{n}: arco funcional", pct(interp.joint_coverage(f, ja)),
                              pct(interp.joint_coverage(f, jb)), "%", 0, None, False))
@@ -309,9 +316,9 @@ class CompareDialog(QtWidgets.QDialog):
         rows = self._rows(a, b)
         self.table.setRowCount(len(rows))
         fmt = lambda v, unit, dec: "--" if v is None else fmt_num(v, dec, unit)
-        for r, (name, va, vb, unit, dec, mdc, lower) in enumerate(rows):
+        for r, (name, va, vb, unit, dec, mdc, mode) in enumerate(rows):
             delta = None if va is None or vb is None else vb - va
-            c = _signed_change(delta, mdc, lower)
+            c = _change(va, vb, mdc, mode)
             delta_txt = "--" if delta is None else ("+" if delta >= 0 else "−") + fmt_num(abs(delta), dec, unit)
             cells = [name, fmt(va, unit, dec), fmt(vb, unit, dec), delta_txt, CHANGE_WORDS[c] or "--"]
             for col, text in enumerate(cells):
@@ -673,8 +680,10 @@ class RecordScreen(QtWidgets.QWidget):
         self.chart.set_data(self.sessions, self.selected, self.metric, self.error, injury)
         self.compare_text.setText(self._compare_text())
 
-    def _describe(self, delta, unit, mdc, lower_is_better=False):
-        c = _signed_change(delta, mdc, lower_is_better)
+    def _describe(self, a, b, unit, mdc, mode=None):
+        """Diferença de a (antes) para b (depois), com a classificação (ver _change)."""
+        delta = b - a
+        c = _change(a, b, mdc, mode)
         sign = "+" if delta >= 0 else "−"
         txt = f"{sign}{abs(delta):.0f}{unit}"
         if c is None:
@@ -692,23 +701,23 @@ class RecordScreen(QtWidgets.QWidget):
                 return f"{name}: sem dados na última avaliação."
             text = f"<b>{name}: {last:.0f}%</b> na última avaliação"
             if len(series) >= 2 and series[-2] is not None:
-                text += f"  ·  {self._describe(last - series[-2], unit, mdc)} em relação à anterior"
+                text += f"  ·  {self._describe(series[-2], last, unit, mdc)} em relação à anterior"
             if len(series) >= 3 and series[0] is not None:
-                text += f"  ·  {self._describe(last - series[0], unit, mdc)} em relação à primeira"
+                text += f"  ·  {self._describe(series[0], last, unit, mdc)} em relação à primeira"
             return text
         joints = [d["articulacoes"][self.metric] for d in dedos]
         jn, mdc = joints[-1]["nome"], self.error["articulacao"]["mdc"]
         last = joints[-1]
         if last["max"] is None:
             return f"{jn} do {name.lower()}: sem dados na última avaliação."
-        text = f"<b>{jn} do {name.lower()}</b>: flexão máx. {last['max']:.0f}°, mín. {last['min']:.0f}°"
+        text = f"<b>{jn} do {name.lower()}</b>: flexão máx. {fmt_deg(last['max'])}, mín. {fmt_deg(last['min'])}"
         cov = interp.joint_coverage(self.selected, last)
         if cov is not None:
             text += f", arco funcional {cov * 100:.0f}%"
         if len(joints) >= 2 and joints[-2]["max"] is not None:
             prev = joints[-2]
-            text += (f"  ·  em relação à anterior: máx. {self._describe(last['max'] - prev['max'], '°', mdc)}, "
-                     f"mín. {self._describe(last['min'] - prev['min'], '°', mdc, lower_is_better=True)}")
+            text += (f"  ·  em relação à anterior: máx. {self._describe(prev['max'], last['max'], '°', mdc)}, "
+                     f"mín. {self._describe(prev['min'], last['min'], '°', mdc, 'ext')}")
         return text
 
     # -------------------------------------------------------------- edição

@@ -82,6 +82,18 @@ def change(delta, mdc):
     return "melhora" if delta > mdc else "piora" if delta < -mdc else "estavel"
 
 
+def extension_change(min_before, min_after, mdc):
+    """Mudança da extensão entre duas avaliações, pelo DÉFICIT (max(0, flexão mínima)):
+    diminuir o déficit = melhora. Sem déficit nas duas (0° ou hiperextensão), não há
+    classificação (None): aumentar a hiperextensão não é melhora."""
+    if min_before is None or min_after is None:
+        return None
+    before, after = max(0.0, min_before), max(0.0, min_after)
+    if before == 0.0 and after == 0.0:
+        return None
+    return change(before - after, mdc)
+
+
 # =============================================================================
 # Medidas derivadas das sessões salvas (inclusive as da versão 1)
 # =============================================================================

@@ -31,7 +31,9 @@ TERMS = {
     "flexao": ("Flexão das articulações",
                "Ângulo de cada articulação: positivo é flexão, negativo é hiperextensão.",
                "MCP, PIP e DIP nos dedos longos; MCP e IP no polegar. Na MCP, a linha do punho até a base "
-               "do dedo faz o papel do metacarpo (o MediaPipe não marca a base do metacarpo). Quadros com "
+               "do dedo faz o papel do metacarpo (o MediaPipe não marca a base do metacarpo). Os ângulos são "
+               "medidos por decomposição por osso, recomendação ISB (Wu et al., 2005): cada osso tem eixos "
+               "próprios e a abdução (dedo desviado para o lado) fica separada da flexão. Quadros com "
                f"ângulo impossível (fora de {kin.PLAUSIBLE_RANGE[0]:.0f}° a {kin.PLAUSIBLE_RANGE[1]:.0f}°) "
                "são descartados."),
     "agora": ("Agora", "Flexão da articulação neste momento, suavizada para a exibição (Configurações).",
@@ -47,18 +49,21 @@ TERMS = {
                   "goniometria.",
                   "TAM = total active motion."),
     "pct_normal": ("% do normal",
-                   f"TAM ativo comparado ao normal da literatura: {sum(_L.values()):.0f}° nos dedos longos "
+                   f"TAM ativo comparado a um normal de referência: {sum(_L.values()):.0f}° nos dedos longos "
                    f"e {sum(_T.values()):.0f}° no polegar.",
-                   f"Normal por articulação: MCP {_L['MCP']:.0f}°, PIP {_L['PIP']:.0f}°, DIP {_L['DIP']:.0f}° "
-                   f"(polegar: MCP {_T['MCP']:.0f}°, IP {_T['IP']:.0f}°). Cor: abaixo de {_PCT(kin.GRADE_FAIR)}, "
-                   f"de {_PCT(kin.GRADE_FAIR)} a {_PCT(kin.GRADE_GOOD)} e acima de {_PCT(kin.GRADE_GOOD)}."),
+                   f"Divisão por articulação adotada pelo sistema: MCP {_L['MCP']:.0f}°, PIP {_L['PIP']:.0f}°, "
+                   f"DIP {_L['DIP']:.0f}° (polegar: MCP {_T['MCP']:.0f}°, IP {_T['IP']:.0f}°). Os totais aparecem em "
+                   "tabelas de resultado do TAM; a divisão por articulação não tem fonte primária conferida. "
+                   f"Cor (faixas no estilo da ASSH, fonte secundária): abaixo de {_PCT(kin.GRADE_FAIR)}, "
+                   f"de {_PCT(kin.GRADE_FAIR)} até abaixo de {_PCT(kin.GRADE_GOOD)}, e {_PCT(kin.GRADE_GOOD)} ou mais."),
     "deficit": ("Déficit de extensão",
                 "Menor flexão que a articulação alcançou: 0° = estendeu por completo.",
-                f"Valores até {kin.DEFICIT_TOLERANCE:.0f}° contam como 0° (erro de medida)."),
+                "Déficit = maior valor entre 0 e a menor flexão, como na fórmula do TAM da ASSH: a "
+                "hiperextensão conta 0."),
     "arco_funcional": ("Arco funcional",
                        "Quanto da faixa de flexão usada nas atividades diárias o movimento cobre. "
                        "100% = alcança toda a faixa.",
-                       f"Faixas de Bain et al. (2015): MCP {_F['MCP'][0]:.0f}–{_F['MCP'][1]:.0f}°, "
+                       f"Faixas de Bain et al. (J Hand Surg Eur, 2015): MCP {_F['MCP'][0]:.0f}–{_F['MCP'][1]:.0f}°, "
                        f"PIP {_F['PIP'][0]:.0f}–{_F['PIP'][1]:.0f}°, DIP {_F['DIP'][0]:.0f}–{_F['DIP'][1]:.0f}°. "
                        "Sem referência para o polegar."),
     "strickland": ("Escore de Strickland",
@@ -73,30 +78,41 @@ TERMS = {
                    "Cada vez que o dedo fecha e volta conta um movimento, por menor que seja. "
                    f"Parcial = amplitude de {_PCT(kin.PARTIAL_FRACTION)} a {_PCT(kin.COMPLETE_FRACTION)} "
                    f"do TAM normal; completa = {_PCT(kin.COMPLETE_FRACTION)} ou mais.",
-                   ""),
+                   f"A média dos últimos {kin.DETECTOR_SMOOTH_FRAMES} quadros do TAM só decide QUANDO há uma "
+                   "repetição (o tremor não conta como movimento). A amplitude (pico menos vale), a classificação, "
+                   "as velocidades e a excursão de cada articulação saem dos dados brutos."),
     "sensibilidade": ("Sensibilidade",
                       f"Menor movimento que conta: {kin.SENS_FACTOR:.0f}× o tremor da mão parada medido na "
                       f"calibração (entre {kin.SENS_MIN:.0f}° e {kin.SENS_MAX:.0f}°).",
-                      "Abaixo disso, o sistema não separa movimento de ruído da câmera."),
+                      "Abaixo disso, o sistema não separa movimento de ruído da câmera. Sem calibração, "
+                      f"vale {kin.SENS_DEFAULT:.0f}°."),
     "vel_flexao": ("Velocidade de flexão",
                    f"Amplitude dividida pelo tempo para fechar, média das últimas {kin.QUALITY_LAST_REPS} "
-                   "repetições.", ""),
+                   "repetições.",
+                   "Critério do sistema (sem fonte na literatura): a flexão começa no último instante em que o "
+                   "TAM médio esteve a até meia sensibilidade do vale e termina no primeiro instante a até meia "
+                   "sensibilidade do pico. Assim uma pausa com a mão aberta ou fechada não entra no tempo."),
     "vel_extensao": ("Velocidade de extensão",
                      "Amplitude da volta dividida pelo tempo para abrir, média das últimas "
-                     f"{kin.QUALITY_LAST_REPS} repetições.", ""),
+                     f"{kin.QUALITY_LAST_REPS} repetições.",
+                     "Mesmo critério da flexão: começa no último instante a até meia sensibilidade do pico e "
+                     "termina no primeiro a até meia sensibilidade do vale seguinte; pausas não entram."),
     "vel_pico": ("Velocidade de pico",
                  f"Maior velocidade durante a flexão, nas repetições de {kin.MIN_SMOOTH_AMPLITUDE:.0f}° "
                  "ou mais.", ""),
     "sparc": ("Suavidade (SPARC)",
-              "Quanto o movimento é contínuo, sem trancos. Mais perto de zero = mais suave: cerca de −1,5 é "
-              "um movimento em sino; abaixo de −3, aos trancos.",
-              "SPARC, Balasubramanian et al. (2015)."),
+              "Quanto o movimento é contínuo, sem trancos. Mais perto de zero = mais suave: um movimento em "
+              "sino dá cerca de −1,5; trancos deixam o valor mais negativo.",
+              "SPARC, Balasubramanian et al. (J NeuroEng Rehabil, 2015), com limiar de 0,05 e corte de 10 Hz, "
+              "calculado sobre a norma das velocidades das articulações do dedo (MCP, PIP e DIP; polegar: "
+              "MCP e IP), como recomenda o artigo."),
     "ciclo": ("Ciclo e cadência",
               "Tempo entre o início de uma repetição e o da seguinte, e quantas repetições cabem num minuto.",
               ""),
     "regularidade": ("Regularidade",
-                     f"Quanto a duração do ciclo varia: até {_PCT(kin.REGULAR_CV)} regular, "
-                     f"{_PCT(kin.REGULAR_CV)}–{_PCT(kin.MODERATE_CV)} moderada, acima irregular.", ""),
+                     f"Quanto a duração do ciclo varia (coeficiente de variação): abaixo de {_PCT(kin.REGULAR_CV)} "
+                     f"regular, de {_PCT(kin.REGULAR_CV)} até abaixo de {_PCT(kin.MODERATE_CV)} moderada, "
+                     "a partir daí irregular.", ""),
     "amp_fim_inicio": ("Amplitude: fim × início",
                        f"Média das 3 últimas repetições comparada à das 3 primeiras (precisa de "
                        f"{kin.TREND_MIN_REPS}). Uma queda pode indicar fadiga.", ""),
@@ -133,8 +149,11 @@ TERMS = {
     "tremor": ("Tremor",
                f"Oscilação rítmica de {medidas.TREMOR_BAND[0]:.0f} a {medidas.TREMOR_BAND[1]:.0f} Hz nas pontas "
                "dos dedos, nos trechos com a mão parada.",
-               "O MediaPipe tem cerca de 1 mm de ruído, então só conta um pico bem acima dele. Referência: "
-               "repouso parkinsoniano ~4–6 Hz; tremor fisiológico ~8–12 Hz."),
+               "Mesmo sem tremor há uma variação de fundo (ruído do MediaPipe e tremor fisiológico: cerca de "
+               "1,2 mm na mão saudável parada da gravação de referência), então só conta um pico bem acima "
+               f"dela ({medidas.TREMOR_PEAK_RATIO:.0f}× a mediana do espectro). Frequência com resolução de "
+               "0,5 Hz. Valores típicos citados na literatura (fonte primária não conferida): repouso "
+               "parkinsoniano ~4–6 Hz; tremor fisiológico ~8–12 Hz."),
     "confiabilidade": ("Confiabilidade da avaliação",
                        "Alta, média ou baixa, pela parte dos quadros com medida válida, a luz, a velocidade da "
                        "imagem, quanto a mão ficou de frente e se a sessão foi curta.",
@@ -147,7 +166,8 @@ TERMS = {
     "distancia": ("Distância da mão",
                   "Aviso quando a mão fica longe demais (o MediaPipe erra mais os ângulos) ou perto "
                   "demais (os dedos saem da imagem ao abrir). O ideal é cerca de 50 cm.",
-                  "Medido pelo tamanho da mão na imagem; só avisa se durar meio segundo."),
+                  f"Medido pelo tamanho da mão na imagem; só avisa se durar {medidas.DISTANCE_FRAMES} quadros "
+                  "seguidos (cerca de meio segundo a 30 quadros/s)."),
     "suavizacao": ("Suavização do sinal",
                    "Filtro que tira a tremedeira da câmera dos ângulos de cada articulação. Por padrão vale "
                    "só para o que aparece ao vivo (valor Agora, gráfico do TAM): as medidas usam os dados brutos.",
@@ -160,9 +180,10 @@ TERMS = {
                    f"(~{_BR(_LAG['ema_kalman'] / 30, 2)} s a 30 quadros/s; mais com câmera lenta). Mesmos "
                    "filtros e parâmetros do artigo EMA × Kalman (Fidelis, ERAMIA-RS 2026). Por que só na "
                    "exibição: o filtro achata os picos. Na gravação de referência (mão saudável), aplicado "
-                   "também nas medidas, o EMA + Kalman baixou o TAM ativo do indicador de 99% para 89% do "
-                   "normal, a velocidade de pico em até 61% e a contagem de repetições (24 para 17 no "
-                   "indicador), e a MCP do indicador (74,6° para 65,3°) caiu abaixo do arco funcional. "
+                   "também nas medidas, o EMA + Kalman baixou o TAM ativo do indicador de 98% para 88% do "
+                   "normal, a velocidade de pico em até 66% e a contagem de repetições (23 para 19 no "
+                   "indicador), e a flexão máxima da MCP do indicador (81,5° para 71,1°) ficou no limite do "
+                   "arco funcional. "
                    "Escolha em Configurações; cada avaliação guarda o filtro usado e onde foi aplicado."),
     "suavizacao_medidas": ("Suavização também nas medidas",
                            "Opcional: o filtro entra antes das repetições e de todas as medidas, como no "

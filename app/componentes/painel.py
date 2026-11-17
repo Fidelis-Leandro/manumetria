@@ -132,12 +132,11 @@ class AmplitudeTab(QtWidgets.QWidget):
             else:
                 warn.clear()
                 warn.setToolTip("")
-            tol = kin.DEFICIT_TOLERANCE                  # abaixo disso: erro de medida
-            if mn is None:
+            if mn is None:                            # déficit = max(0, menor flexão)
                 deficits.append(f"{jn} --")
-            elif mn > tol:
+            elif mn > 0:
                 deficits.append(f"{jn} <b>{mn:.0f}°</b>")
-            elif mn < -tol:
+            elif mn <= -0.5:
                 deficits.append(f"{jn} 0° (hiperextensão {abs(mn):.0f}°)")
             else:
                 deficits.append(f"{jn} 0°")

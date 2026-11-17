@@ -35,14 +35,18 @@ PRINT_DENSITY = 2.5          # pixels de imagem por pixel do documento no PDF: n
 
 METHOD_NOTE = (
     "Medidas estimadas por câmera comum com o MediaPipe Hand Landmarker, sem marcadores. "
-    "A flexão de cada articulação é medida no plano do movimento; positivo = flexão, "
+    "A flexão de cada articulação é medida por decomposição por osso, recomendação ISB (Wu et al., "
+    "2005): cada osso tem eixos próprios e a abdução fica separada da flexão; positivo = flexão, "
     "negativo = hiperextensão. TAM ativo = soma das flexões máximas − soma dos déficits de "
     "extensão (MCP+PIP+DIP; polegar MCP+IP); o % do normal usa referências da literatura "
-    "(≈260° nos dedos longos, ≈140° no polegar). A MCP é medida em relação à linha "
+    "(≈260° nos dedos longos, ≈140° no polegar; a divisão por articulação não tem fonte primária "
+    "conferida); déficit de extensão = maior valor entre 0 e a menor flexão. A média de 8 quadros só "
+    "decide quando há uma repetição: amplitude, classificação, velocidades e excursão de cada "
+    "repetição saem dos dados brutos. A MCP é medida em relação à linha "
     "punho–base do dedo, pois o MediaPipe não marca o metacarpo. Quadros com ângulo "
     "impossível ou com a mão de lado (mais de 60° da palma de frente) foram descartados. "
-    "São estimativas, não substituem a goniometria: em testes, o erro típico ficou entre 5° e 15° "
-    "por articulação, conforme a posição da mão.")
+    "São estimativas, não substituem a goniometria: o sistema ainda não foi comparado com o goniômetro "
+    "manual, e o erro em graus não é conhecido. O reteste estima quanto a medida varia ao repetir.")
 
 
 def method_note(results):

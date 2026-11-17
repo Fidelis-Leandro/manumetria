@@ -85,7 +85,8 @@ chamado pelo `gerar_hash_registro.bat`).
 2. Guarde no resultado em `app/dados/resultados.py` (o banco salva o dicionário inteiro).
 3. Mostre no painel (`app/componentes/painel.py`), na ficha ou no CSV, se quiser.
 4. Explique a medida em `app/glossario.py` (vale para a dica ao passar o mouse e para a Ajuda) e use `explain(widget, "chave")` onde ela aparece.
-5. Escreva um teste em `tests/test_medidas.py` com um caso de resposta conhecida.
+5. Escreva um teste em `tests/test_auditoria.py` (ou `tests/test_medidas.py`) com um caso de resposta
+   conhecida.
 6. Rode `tests\testar.py`.
 7. Para as avaliações já salvas ganharem a medida: Configurações > **Recalcular avaliações**
    (`app/dados/recalculo.py`). Ele passa os pontos gravados pelo cálculo atual, mostra o que
@@ -112,16 +113,28 @@ O banco se atualiza sozinho ao abrir: colunas novas são acrescentadas em `Banco
   `av.display_history` (gráfico do TAM). Com "Aplicar a suavização também nas medidas"
   (`suavizacao_medidas` em Configurações; `nas_medidas` no registro), a `Session`
   recebe os suavizados, como no pipeline do artigo. Motivo do padrão: o filtro achata
-  os picos (na gravação de referência, -10 pp no TAM ativo do indicador, até -61% na
-  velocidade de pico e um falso "fora do arco funcional"). Com o padrão, os resultados
-  são idênticos aos da v1.0.0 (há um teste que compara com a tag). Calibração, tremor
+  os picos (na gravação de referência, -10 pp no TAM ativo do indicador e até -66% na
+  velocidade de pico; tabela no README). Com o padrão, os resultados
+  são idênticos aos do modo "Desligada" (há um teste para isso). Calibração, tremor
   e as medidas por pontos (abertura, polpa-palma) usam sempre os dados brutos. O filtro
   só usa a ordem dos quadros (nada de relógio): o recálculo tem de dar o mesmo resultado
   do ao vivo. Cada avaliação guarda `resultados["filtro"]` (modo, parâmetros e
   `nas_medidas`); o recálculo usa esse registro (sem registro: "Desligada"; sem
   `nas_medidas`: dados brutos). Os parâmetros do artigo não devem ser mudados sem um
-  motivo documentado. A média de 8 quadros continua só para o contador decidir, e a
-  derivada de Savitzky–Golay (5 pontos) só para a velocidade de pico e a suavidade (SPARC).
+  motivo documentado. A média de 8 quadros só decide QUANDO há repetição (e os instantes
+  de início e fim, pelo critério da meia sensibilidade); amplitude, classificação, TAM no
+  pico, excursão e velocidades saem dos dados brutos. A derivada de Savitzky–Golay (5
+  pontos) entra na velocidade de pico (derivada do TAM) e no SPARC (norma das velocidades
+  articulares).
+- **Goniometria** (v1.2.0): `kin.joint_angles` é um porte fiel do `gonio` da versão web
+  (`C:\sistema-mao-web\core\goniometro.js`, igual ao Hand Filter Lab): decomposição por
+  osso, recomendação ISB (Wu et al., 2005). Ao mudar essa conta, refaça a prova contra o
+  JavaScript (docs/AUDITORIA_CALCULOS.md, seção 3) e o autoteste em `tests/test_auditoria.py`.
+- **Auditoria dos cálculos** (v1.2.0): `docs/AUDITORIA_CALCULOS.md` e
+  `tests/test_auditoria.py`. Todo número afirmado num texto (README, Ajuda, PDF, dicionário
+  de dados, comentário) precisa de evidência no repositório (teste, gravação de referência)
+  ou de fonte conferida; o teste confere os números citados e falha se um texto sem fonte
+  voltar. Ao mudar uma conta, atualize o relatório e o teste.
 - Interpretação por regras explícitas, com "sugestivo de": apoio à decisão, não diagnóstico.
 - Textos da interface em português, sem emojis.
 - A mão 3D é gerada pelo próprio código (sem modelo de terceiros). A cor de cada

@@ -2,8 +2,8 @@
 Cinemática dos dedos (usada pelo motor da avaliação, app/avaliador.py).
 
 Tudo aqui é numpy puro e não depende da interface:
-  - ângulos MCP / PIP / DIP (polegar: MCP / IP) com sinal:
-      positivo = flexão, negativo = hiperextensão
+  - ângulos MCP / PIP / DIP (polegar: MCP / IP) com sinal, por decomposição por osso
+    (recomendação ISB, Wu et al. 2005): positivo = flexão, negativo = hiperextensão
   - TAM (Total Active Motion) e referência da literatura (~260° dedos longos, ~140° polegar)
   - TAM ativo (como na goniometria) = soma das flexões máximas - soma dos déficits de extensão
   - repetições por dedo (movimento / parcial / completa) com o tempo de cada fase
@@ -50,7 +50,8 @@ def normal_tam(finger):
 
 
 # Classificação do TAM ativo em % do normal (no estilo ASSH):
-# < 50% ruim, 50-75% regular, > 75% bom.  Usada para colorir os dedos.
+# < 50% ruim, 50% até abaixo de 75% regular, >= 75% bom (faixas no estilo da ASSH,
+# fonte secundária; a ASSH também tem "excelente" = normal, aqui junto com "bom").
 GRADE_FAIR = 0.50
 GRADE_GOOD = 0.75
 
@@ -60,32 +61,33 @@ PARTIAL_FRACTION = 0.25       # >= 25% do normal -> parcial; abaixo -> "moviment
 
 # Sensibilidade = menor movimento contado = 3x o tremor medido parado.
 SENS_FACTOR = 3.0
-# Teto de 30°: na webcam real (14 fps) o tremor do TAM medido parado foi de
-# 7-8° (desvio padrão) -> 3x = 21-24°. Com teto de 15° o ruído contaria.
+# Teto de 30°: folga para câmeras lentas ou com pouca luz, onde o tremor do TAM
+# parado é maior (estimativa, sem gravação no repositório; na gravação de
+# referência, a 31 quadros/s com boa luz, o desvio padrão foi de 0,5-0,9°).
 SENS_MIN, SENS_MAX, SENS_DEFAULT = 2.0, 30.0, 5.0
 
-# O detector de repetições olha a média dos últimos N frames do TAM (só
-# para contar; os números exibidos não passam por essa média). Sem isso, o tremor faz o
-# "vale" cair até o extremo do ruído e conta repetições com a mão parada.
-# Ajustado na simulação: 8 frames + fator 3 = zero repetições falsas em
-# 3 x 2 min de mão parada (5 frames ainda contava algumas).
+# O detector de repetições decide QUANDO há uma repetição olhando a média dos
+# últimos N frames do TAM. Sem isso, o tremor faz o "vale" cair até o extremo do
+# ruído e conta repetições com a mão parada. Os VALORES de cada repetição
+# (amplitude, classificação, TAM no pico, excursão, velocidades) saem dos dados
+# brutos (FingerTracker). 8 quadros + fator 3: zero repetições falsas em 60 s de
+# mão parada simulada (tests/test_kinematics.py).
 DETECTOR_SMOOTH_FRAMES = 8
 
 CALIBRATION_FRAMES = 60       # ~2 s a 30 fps (45 subestimava o tremor)
 STILL_WINDOW = 15             # frames usados para checar se a mão está parada
-# Desvio padrão do TAM (°) acima disso = mão se mexendo. Medido na webcam
-# real com boa luz (gravação de 20 s): tremor parado de 0,5-1,1°. Um limite
-# folgado (12°) aceitava a mão em movimento como "parada" e inflava a
-# sensibilidade; se não ficar parada, o tempo limite usa o trecho mais calmo.
+# Desvio padrão do TAM (°) acima disso = mão se mexendo. Na gravação de
+# referência (boa luz), o trecho parado mais calmo teve desvio de 0,5-0,9° por
+# dedo (tests/test_auditoria.py). Um limite folgado (12°) aceitava a mão em
+# movimento como "parada" e inflava a sensibilidade; se não ficar parada, o
+# tempo limite usa o trecho mais calmo.
 STILL_MAX_STD = 4.0
 CALIBRATION_TIMEOUT_S = 10.0  # sem 2 s parados nesse tempo -> usa o trecho mais calmo
 # Mão "aberta" para calibrar: mediana do TAM dos 4 dedos longos abaixo disso.
-# Na webcam real, mão aberta e parada deu TAM ~61° (o MediaPipe nunca dá 0°).
+# Com a mão aberta o MediaPipe raramente dá 0° (na gravação de referência, o
+# trecho parado mais calmo teve TAM mediano de ~30°).
 OPEN_HAND_MAX_TAM = 90.0
 
-# Déficit de extensão (e hiperextensão) abaixo disso conta como 0°: está dentro
-# do erro de medida (o goniômetro manual tem ~±5°; o tremor da câmera, 1-2°).
-DEFICIT_TOLERANCE = 3.0
 
 # Qualidade do movimento: calculada sobre as últimas N repetições.
 QUALITY_LAST_REPS = 10
@@ -100,10 +102,10 @@ CONSISTENT_CV, MODERATE_EFFORT_CV = 0.10, 0.20
 # do normal da literatura: um paciente com 45% do normal também chega lá.
 STRONG_MARGIN = 0.10
 
-# Velocidade de pico e suavidade usam o TAM de cada repetição (sem a média do
-# detector; suavizado só com a suavização aplicada também nas medidas), reamostrado
-# em grade uniforme. Abaixo desta amplitude o tremor domina o sinal e as duas
-# medidas perdem o sentido.
+# Velocidade de pico (derivada do TAM) e suavidade (SPARC da norma das velocidades
+# articulares) usam os dados brutos de cada repetição (suavizados só com a suavização
+# aplicada também nas medidas), reamostrados em grade uniforme. Abaixo desta amplitude
+# o tremor domina o sinal e as duas medidas perdem o sentido (limiar escolhido).
 SIGNAL_FS = 30.0
 MIN_SMOOTH_AMPLITUDE = 15.0
 
@@ -114,9 +116,9 @@ def is_open_hand(angles):
 
 # Ângulo fora desta faixa não é da mão, é erro do MediaPipe (pontos trocados
 # ou escondidos ao girar a mão). O frame inteiro é DESCARTADO, como uma falha
-# de detecção; nenhum valor é corrigido, e o quadro não entra na suavização. Na gravação real, 8 de
-# 1.550 frames (todos num giro rápido da mão) davam até 155° de flexão e -142°
-# de "hiperextensão" e estragavam máximos e mínimos da sessão.
+# de detecção; nenhum valor é corrigido, e o quadro não entra na suavização. Na gravação de
+# referência, 3 de 1.550 quadros com mão (num giro rápido) davam até -102° de
+# "hiperextensão" e estragariam máximos e mínimos da sessão.
 PLAUSIBLE_RANGE = (-60.0, 130.0)
 
 
@@ -125,10 +127,10 @@ def plausible(angles):
     return all(((v >= lo) & (v <= hi)).all() for v in angles.values())
 
 
-# Vista da mão: com a mão de lado o MediaPipe erra muito os ângulos (teste com
-# mão renderizada: 6-36° de erro médio conforme a vista; na gravação real, os
-# extremos absurdos aconteceram com a mão a 74-92° da palma de frente). Só
-# frames até VIEW_MAX_DEG da palma de frente entram nas medições.
+# Vista da mão: com a mão de lado o MediaPipe erra mais os ângulos (na gravação
+# de referência, os 3 quadros com ângulo impossível tinham a mão a 75-128° da
+# palma de frente). Só frames até VIEW_MAX_DEG da palma de frente entram nas
+# medições (limite escolhido, sem fonte).
 # (180 desliga a regra.)
 VIEW_MAX_DEG = 60.0
 
@@ -150,45 +152,96 @@ def good_view(world, hand):
 
 
 # =============================================================================
-# Ângulos
+# Ângulos: decomposição por osso, recomendação da ISB para a mão (Wu et al., J Biomech 2005)
 # =============================================================================
+# Porte fiel do goniômetro da versão web (C:\sistema-mao-web\core\goniometro.js, função
+# gonio, idêntica ao Hand Filter Lab). Cada osso ganha eixos próprios: Y ao longo do osso,
+# Z lateral, volar = Z x Y. A flexão de uma articulação é o ângulo do osso distal no plano
+# sagital (Y, volar) do osso proximal; a parte lateral (abdução) fica de fora.
+#   - metacarpo de cada dedo longo: punho -> base do dedo (o MediaPipe não marca a base do
+#     metacarpo); Z = linha base do indicador -> base do mínimo, tirada a parte ao longo do osso;
+#   - falanges: o Z do osso anterior, tirada a parte ao longo do novo osso (o eixo lateral é
+#     levado ao longo da cadeia);
+#   - polegar (MCP e IP): eixo de dobra = normal da palma, tirada a parte ao longo do
+#     metacarpo do polegar (o mesmo eixo para as duas articulações).
+# A rotação axial dos dedos não aparece nos 21 pontos (eles ficam sobre o eixo dos ossos).
+# Conferido contra o JavaScript original na gravação de referência e no autoteste do lab
+# (tests/test_auditoria.py; docs/AUDITORIA_CALCULOS.md).
+LONG_BASES = {"index": 5, "middle": 9, "ring": 13, "pinky": 17}
+
+
+def _unit(v):
+    n = np.linalg.norm(v)
+    return v / n if n > 1e-12 else np.zeros(3)
+
+
+def _orth(v, axis):
+    """v sem a parte ao longo de `axis` (unitário), normalizado."""
+    return _unit(v - axis * (v @ axis))
+
+
+def _flex(d, y, z):
+    """Flexão (°) do segmento d em relação ao osso de eixo y e eixo lateral z: ângulo no
+    plano sagital (y, volar = z x y). Positivo = flexão (para o lado volar)."""
+    return float(np.degrees(np.arctan2(d @ np.cross(z, y), d @ y)))
+
+
+def left_chirality(world, hand):
+    """worldToLab da referência, sem a escala: inverte y e z (giro de 180° em torno de x,
+    não muda ângulos) e espelha x na geometria de mão direita. A imagem é espelhada antes
+    da detecção: a mão REAL direita aparece com geometria de mão esquerda (não espelha) e
+    a esquerda real, com geometria de direita (espelha). Resultado: sempre a quiralidade de
+    mão esquerda, em que a flexão sai positiva."""
+    P = np.asarray(world, dtype=np.float64)
+    sx = -1.0 if hand == "Left" else 1.0
+    return np.column_stack([sx * P[:, 0], -P[:, 1], -P[:, 2]])
+
+
+def isb_angles(lm):
+    """21 pontos na quiralidade de mão esquerda -> {dedo: flexões (°) com sinal}."""
+    lm = np.asarray(lm, dtype=np.float64)
+    lat = _unit(lm[17] - lm[5])
+    n_palm = _unit(np.cross(lm[5] - lm[0], lm[17] - lm[0]))
+    out = {}
+    t1, t2, t3 = _unit(lm[2] - lm[1]), _unit(lm[3] - lm[2]), _unit(lm[4] - lm[3])
+    k1 = _orth(n_palm, t1)
+
+    def bend(a, d, k):                     # ângulo de a até d em torno de k (d projetado)
+        dp = _orth(d, k)
+        return float(np.degrees(np.arctan2(np.cross(a, dp) @ k, a @ dp)))
+    out["thumb"] = np.array([bend(t1, t2, k1), bend(t2, t3, k1)])
+    for f, b in LONG_BASES.items():
+        ym = _unit(lm[b] - lm[0])
+        zm = _orth(lat, ym)                                    # metacarpo
+        d1 = _unit(lm[b + 1] - lm[b])
+        z1 = _orth(zm, d1)                                     # falange proximal
+        d2 = _unit(lm[b + 2] - lm[b + 1])
+        z2 = _orth(z1, d2)                                     # falange média
+        d3 = _unit(lm[b + 3] - lm[b + 2])
+        out[f] = np.array([_flex(d1, ym, zm), _flex(d2, d1, z1), _flex(d3, d2, z2)])
+    return {f: out[f] for f in FINGERS}
+
+
 def joint_angles(world, hand=None):
     """21 landmarks 3D -> {dedo: array com a flexão de cada articulação (°)}.
 
-    hand = mão REAL ("Right"/"Left", imagem espelhada): flexão medida como
-    num goniômetro, no PLANO do movimento e COM SINAL (positivo = flexão,
-    negativo = hiperextensão). Os dois segmentos são projetados no plano
-    perpendicular ao eixo de flexão antes de medir o ângulo; assim o desvio
-    lateral (abrir/fechar os dedos) não entra como flexão. Eixo de flexão:
-      - dedos longos: eixo transversal da palma (base do indicador -> base do
-        mínimo), que não muda com a postura do dedo;
-      - polegar: normal da palma (a flexão do polegar cruza a palma).
-    O sentido do eixo dos dedos longos depende do lado da mão; o da normal
-    se inverte junto com a geometria e não precisa de correção.
+    hand = mão REAL ("Right"/"Left", imagem espelhada): flexão COM SINAL (positivo =
+    flexão, negativo = hiperextensão), pela decomposição por osso (isb_angles). Mão
+    esquerda e mão direita espelhada dão os mesmos ângulos.
 
-    Sem hand: ângulo 3D sem sinal (sempre >= 0) - usado antes de se saber
-    qual é a mão.
+    Sem hand: ângulo 3D sem sinal entre os segmentos (sempre >= 0) - usado só antes
+    de se saber qual é a mão.
     """
+    if hand in ("Right", "Left"):
+        return isb_angles(left_chirality(world, hand))
     P = np.asarray(world, dtype=np.float64)
-    signed = hand in ("Right", "Left")
-    if signed:
-        lateral = (P[17] - P[5]) * (1.0 if hand == "Right" else -1.0)
-        normal = np.cross(P[5] - P[0], P[17] - P[0])
-        axes = {"long": lateral / np.linalg.norm(lateral), "thumb": normal / np.linalg.norm(normal)}
     out = {}
     for f in FINGERS:
         values = []
         for _, (a, b, c) in JOINTS[f]:
             u, v = P[b] - P[a], P[c] - P[b]
-            if signed:
-                ax = axes["thumb" if f == "thumb" else "long"]
-                u = u - (u @ ax) * ax                     # projeta no plano da flexão
-                v = v - (v @ ax) * ax
-                ang = float(np.degrees(np.arctan2(np.cross(u, v) @ ax, u @ v)))
-            else:
-                cos = u @ v / (np.linalg.norm(u) * np.linalg.norm(v) + 1e-12)
-                ang = float(np.degrees(np.arccos(np.clip(cos, -1.0, 1.0))))
-            values.append(ang)
+            cos = u @ v / (np.linalg.norm(u) * np.linalg.norm(v) + 1e-12)
+            values.append(float(np.degrees(np.arccos(np.clip(cos, -1.0, 1.0)))))
         out[f] = np.array(values)
     return out
 
@@ -206,8 +259,9 @@ def uniform(t, x, fs=SIGNAL_FS):
 
 def derivative(x, fs=SIGNAL_FS):
     """Derivada por mínimos quadrados em 5 pontos (Savitzky-Golay, 1ª ordem).
-    Só entra no CÁLCULO da velocidade (não muda os ângulos exibidos). A diferença
-    entre quadros vizinhos transformaria o tremor de ~1° do MediaPipe em ~40°/s."""
+    Só entra no CÁLCULO da velocidade (não muda os ângulos exibidos). Com ruído de
+    desvio padrão σ por quadro, a diferença entre quadros vizinhos tem desvio
+    σ·√2·fs (σ = 1° a 30 Hz -> ~42°/s); a de 5 pontos, σ·fs/√10 (~9°/s)."""
     x = np.asarray(x, dtype=float)
     d = np.gradient(x) * fs
     if len(x) >= 5:
@@ -249,44 +303,71 @@ def trend(values):
 # =============================================================================
 # Repetições por dedo
 # =============================================================================
+def joint_speed(joints, fs=SIGNAL_FS):
+    """Norma das velocidades articulares (°/s): raiz da soma dos quadrados da derivada de
+    cada articulação (colunas de `joints`, em grade uniforme). Entrada do SPARC, como
+    recomendam Balasubramanian et al. (2015): a derivada do TAM se anula quando uma
+    articulação flete e outra estende, a norma não."""
+    J = np.asarray(joints, dtype=float)
+    return np.sqrt(sum(derivative(J[:, k], fs) ** 2 for k in range(J.shape[1])))
+
+
 @dataclass
 class Rep:
-    amplitude: float          # pico - vale do TAM (°)
-    peak_tam: float           # TAM no pico (°)
+    amplitude: float          # pico - vale do TAM nos dados brutos (°)
+    peak_tam: float           # TAM no pico, nos dados brutos (°)
     excursion: np.ndarray     # quanto cada articulação se moveu nessa repetição (°)
     kind: str                 # "movimento" | "parcial" | "completa"
-    t_start: float = None     # início da flexão (vale)
-    t_peak: float = None      # fim da flexão (pico)
+    t_start: float = None     # início da flexão: último instante perto do vale
+    t_peak: float = None      # fim da flexão: primeiro instante perto do pico
     t_end: float = None       # quando a repetição foi fechada (já voltando)
-    ext_amplitude: float = None   # extensão completa: pico -> vale seguinte
-    t_ext_end: float = None       #   (preenchida quando o próximo vale é achado)
+    t_ext_start: float = None # início da extensão: último instante perto do pico
+    ext_amplitude: float = None   # extensão completa: pico -> vale seguinte (dados brutos)
+    t_ext_end: float = None       #   fim: primeiro instante perto do vale seguinte
+    t_raw_start: float = None     # instantes do vale e do pico nos dados brutos (janela
+    t_raw_peak: float = None      #   da independência)
     coupling: dict = field(default=None)   # {outro dedo: quanto se moveu junto (0..1,5)}
     independence: float = None             # 1 - média do acoplamento (0..1)
-    peak_velocity: float = None            # maior velocidade na flexão (°/s)
+    peak_velocity: float = None            # maior velocidade na flexão (°/s, derivada do TAM)
     sparc_flex: float = None               # suavidade da flexão
     sparc_ext: float = None                # suavidade da extensão (quando o vale seguinte chega)
 
     @property
     def flex_velocity(self):
         """Velocidade média de flexão (°/s) = amplitude / tempo de subida."""
-        dt = (self.t_peak - self.t_start) if self.t_start is not None else None
-        return self.amplitude / dt if dt and dt > 0.05 else None
+        if self.t_start is None or self.t_peak is None:
+            return None
+        dt = self.t_peak - self.t_start
+        return self.amplitude / dt if dt > 0.05 else None
 
     @property
     def ext_velocity(self):
+        """Velocidade média de extensão (°/s) = amplitude da volta / tempo de descida."""
         if self.t_ext_end is None or self.ext_amplitude is None:
             return None
-        dt = self.t_ext_end - self.t_peak
+        start = self.t_ext_start if self.t_ext_start is not None else self.t_peak
+        dt = self.t_ext_end - start
         return self.ext_amplitude / dt if dt > 0.05 else None
 
 
 class FingerTracker:
     """Estado de um dedo durante a sessão.
 
-    Uma repetição = o TAM sobe (flexão) e volta (extensão). Para o ruído não
-    contar repetições falsas, usa histerese do tamanho da sensibilidade: só
-    vira "subindo" quando passa do vale + sensibilidade, e só fecha a
-    repetição quando cai do pico - sensibilidade.
+    Uma repetição = o TAM sobe (flexão) e volta (extensão). QUANDO há repetição é decidido
+    sobre a média dos últimos DETECTOR_SMOOTH_FRAMES quadros do TAM, com histerese do
+    tamanho da sensibilidade: só vira "subindo" quando passa do vale + sensibilidade, e só
+    fecha a repetição quando cai do pico - sensibilidade.
+
+    Tempos (critério do sistema, sem fonte na literatura): com h = metade da sensibilidade,
+    a flexão começa no ÚLTIMO instante em que o TAM médio esteve a até h do vale e termina
+    no PRIMEIRO instante a até h do pico; a extensão começa no último instante a até h do
+    pico e termina no primeiro a até h do vale seguinte. Assim uma pausa com a mão aberta
+    ou fechada não entra no tempo do movimento.
+
+    Valores (DADOS BRUTOS): o vale e o pico são o menor e o maior TAM dos dados brutos nas
+    janelas de 0,4 s antes a 0,1 s depois desses instantes (o TAM médio atrasa). Deles saem
+    a amplitude, a classificação, o TAM no pico, a excursão de cada articulação, as
+    velocidades médias e o trecho da velocidade de pico e do SPARC.
     """
 
     def __init__(self, finger, sensitivity=SENS_DEFAULT):
@@ -304,7 +385,8 @@ class FingerTracker:
         self._mode = None          # None | "down" (procurando vale) | "up" (procurando pico)
         self._awaiting_ext = False # a última repetição espera o vale seguinte
         self._recent = deque(maxlen=DETECTOR_SMOOTH_FRAMES)
-        self._raw = deque(maxlen=900)   # (t, TAM sem a média do detector), ~30 s: velocidade e suavidade
+        self._trail = []           # (t, TAM médio) desde o último extremo: tempos do movimento
+        self._raw = deque(maxlen=900)   # (t, TAM, ângulos) dos dados brutos, ~30 s
 
     def update(self, joints, t=None):
         """joints = flexões das articulações deste dedo, ou None (sem mão).
@@ -315,10 +397,11 @@ class FingerTracker:
             self._awaiting_ext = False
             self._recent.clear()
             self._raw.clear()
+            self._trail = []
             return None
         self.tam, self.joints = float(joints.sum()), joints
         if t is not None:
-            self._raw.append((t, self.tam))
+            self._raw.append((t, self.tam, np.array(joints, dtype=float)))
         self.max_tam = self.tam if self.max_tam is None else max(self.max_tam, self.tam)
         self.max_joints = joints.copy() if self.max_joints is None else np.maximum(self.max_joints, joints)
         self.min_joints = joints.copy() if self.min_joints is None else np.minimum(self.min_joints, joints)
@@ -326,73 +409,107 @@ class FingerTracker:
         self._recent.append(joints)
         if len(self._recent) < self._recent.maxlen:
             return None
-        joints = np.mean(self._recent, axis=0)     # só para detectar repetições
-        tam = float(joints.sum())
+        avg = np.mean(self._recent, axis=0)     # só para decidir quando há repetição
+        tam = float(avg.sum())
+        self._trail.append((t, tam))
+        h = self.sens / 2.0
 
         if self._mode is None:
             self._mode = "down"
-            self._valley, self._valley_joints, self._valley_t = tam, joints.copy(), t
+            self._valley, self._valley_joints = tam, avg.copy()
         elif self._mode == "down":
             if tam < self._valley:
-                self._valley, self._valley_joints, self._valley_t = tam, joints.copy(), t
+                self._valley, self._valley_joints = tam, avg.copy()
             elif tam > self._valley + self.sens:
+                near = [tt for tt, v in self._trail if v <= self._valley + h]
                 if self._awaiting_ext and self.reps:   # o vale achado fecha a extensão anterior
-                    prev = self.reps[-1]
-                    prev.ext_amplitude = prev.peak_tam - self._valley
-                    prev.t_ext_end = self._valley_t
-                    seg = self._segment(prev.t_peak, self._valley_t, rising=False)
-                    if seg is not None and prev.amplitude >= MIN_SMOOTH_AMPLITUDE:
-                        prev.sparc_ext = sparc(np.abs(derivative(seg)))
+                    self._close_extension(self.reps[-1], near[0])
                 self._awaiting_ext = False
-                self._mode, self._peak, self._peak_t, self._up_max = "up", tam, t, joints.copy()
+                self._onset = near[-1]
+                self._mode, self._peak, self._up_max = "up", tam, avg.copy()
+                self._trail = [(t, tam)]
         else:
-            self._up_max = np.maximum(self._up_max, joints)
+            self._up_max = np.maximum(self._up_max, avg)
             if tam > self._peak:
-                self._peak, self._peak_t = tam, t
+                self._peak = tam
             elif tam < self._peak - self.sens:
-                rep = self._close(t)
+                near = [tt for tt, v in self._trail if v >= self._peak - h]
+                rep = self._close(t, near[0], near[-1])
                 self._mode = "down"
-                self._valley, self._valley_joints, self._valley_t = tam, joints.copy(), t
+                self._valley, self._valley_joints = tam, avg.copy()
                 self._awaiting_ext = True
+                self._trail = [(t, tam)]
                 return rep
         return None
 
-    def _close(self, t):
-        amp = self._peak - self._valley
+    def _classify(self, amp):
         if amp >= COMPLETE_FRACTION * self.normal:
-            kind = "completa"
-        elif amp >= PARTIAL_FRACTION * self.normal:
-            kind = "parcial"
-        else:
-            kind = "movimento"
-        rep = Rep(amp, self._peak, np.maximum(0.0, self._up_max - self._valley_joints), kind,
-                  t_start=self._valley_t, t_peak=self._peak_t, t_end=t)
-        seg = self._segment(rep.t_start, rep.t_peak, rising=True)
-        if seg is not None and amp >= MIN_SMOOTH_AMPLITUDE:
-            speed = derivative(seg)
-            rep.peak_velocity = float(speed.max())
-            rep.sparc_flex = sparc(np.abs(speed))
+            return "completa"
+        if amp >= PARTIAL_FRACTION * self.normal:
+            return "parcial"
+        return "movimento"
+
+    def _close(self, t, t_peak, t_ext_start):
+        # sem dados brutos suficientes (ex.: quadros sem horário), fica o TAM médio
+        amp = self._peak - self._valley
+        rep = Rep(amp, self._peak, np.maximum(0.0, self._up_max - self._valley_joints), None,
+                  t_start=self._onset, t_peak=t_peak, t_end=t, t_ext_start=t_ext_start)
+        mv = self._movement(rep.t_start, rep.t_peak, rising=True)
+        if mv is not None:
+            rep.amplitude, rep.peak_tam, rep.excursion = mv["amplitude"], mv["end"], mv["excursion"]
+            rep.t_raw_start, rep.t_raw_peak = mv["t0"], mv["t1"]
+            if rep.amplitude >= MIN_SMOOTH_AMPLITUDE and mv["tam_speed"] is not None:
+                rep.peak_velocity = float(mv["tam_speed"].max())
+                rep.sparc_flex = sparc(mv["joint_speed"])
+        rep.kind = self._classify(rep.amplitude)
         self.reps.append(rep)
         return rep
 
-    def _segment(self, t0, t1, rising):
-        """TAM (sem a média do detector, em grade uniforme) de um movimento: do extremo perto de t0 ao
-        extremo perto de t1. t0/t1 vêm do detector, que olha a média dos últimos
-        quadros e por isso atrasa ~0,1 s: o extremo nos dados brutos é procurado um pouco antes."""
-        if t0 is None or t1 is None or t1 - t0 < 0.1:
+    def _close_extension(self, rep, t_end):
+        rep.t_ext_end = t_end
+        rep.ext_amplitude = self._peak - self._valley          # TAM médio, se faltar dado bruto
+        mv = self._movement(rep.t_ext_start, t_end, rising=False)
+        if mv is not None:
+            rep.ext_amplitude = mv["amplitude"]
+            if rep.amplitude >= MIN_SMOOTH_AMPLITUDE and mv["joint_speed"] is not None:
+                rep.sparc_ext = sparc(mv["joint_speed"])
+
+    def _movement(self, t0, t1, rising):
+        """Um movimento nos dados brutos, do extremo perto de t0 ao extremo perto de t1
+        (janelas de 0,4 s antes a 0,1 s depois: os instantes vêm do TAM médio, que atrasa).
+        Devolve a amplitude, o TAM no fim, a excursão de cada articulação, os instantes dos
+        extremos e, em grade uniforme, a velocidade do TAM e a norma das velocidades
+        articulares; None sem dados."""
+        if t0 is None or t1 is None or t1 <= t0:
             return None
-        pts = [(tt, v) for tt, v in self._raw if t0 - 0.4 <= tt <= t1 + 0.1]
-        if len(pts) < 6:
+        pts = [p for p in self._raw if t0 - 0.4 <= p[0] <= t1 + 0.1]
+        if len(pts) < 2:
             return None
-        tu, x = uniform(*zip(*pts))
-        head = tu <= t0 + 0.1
-        tail = tu >= t1 - 0.4
+        T = np.array([p[0] for p in pts])
+        X = np.array([p[1] for p in pts])
+        J = np.array([p[2] for p in pts])
+        head, tail = T <= t0 + 0.1, T >= t1 - 0.4
         if not head.any() or not tail.any():
             return None
-        pick_start, pick_end = (np.argmin, np.argmax) if rising else (np.argmax, np.argmin)
-        i0 = int(pick_start(np.where(head, x, np.inf if rising else -np.inf)))
-        i1 = int(pick_end(np.where(tail, x, -np.inf if rising else np.inf)))
-        return x[i0:i1 + 1] if i1 - i0 >= 5 else None
+        if rising:
+            i0 = int(np.argmin(np.where(head, X, np.inf)))
+            i1 = int(np.argmax(np.where(tail, X, -np.inf)))
+        else:
+            i0 = int(np.argmax(np.where(head, X, -np.inf)))
+            i1 = int(np.argmin(np.where(tail, X, np.inf)))
+        amp = (X[i1] - X[i0]) * (1.0 if rising else -1.0)
+        if i1 <= i0 or amp <= 0:
+            return None
+        out = {"amplitude": float(amp), "end": float(X[i1]), "t0": float(T[i0]), "t1": float(T[i1]),
+               "excursion": np.maximum(0.0, J[i0:i1 + 1].max(axis=0) - J[i0]),
+               "tam_speed": None, "joint_speed": None}
+        if T[i1] - T[i0] >= 0.1:
+            tu, x = uniform(T[i0:i1 + 1], X[i0:i1 + 1])
+            if len(tu) >= 6:
+                Ju = np.column_stack([np.interp(tu, T[i0:i1 + 1], J[i0:i1 + 1, k]) for k in range(J.shape[1])])
+                out["tam_speed"] = derivative(x)
+                out["joint_speed"] = joint_speed(Ju)
+        return out
 
     # ------------------------------------------------------------- amplitude
     def counts(self):
@@ -402,12 +519,11 @@ class FingerTracker:
         return c
 
     def deficits(self):
-        """Déficit de extensão por articulação (°): menor flexão alcançada, se
-        passar da tolerância (0 = estendeu por completo; hiperextensão também
-        conta 0)."""
+        """Déficit de extensão por articulação (°) = max(0, menor flexão alcançada), como na
+        fórmula do TAM da ASSH: 0 = estendeu por completo; hiperextensão também conta 0."""
         if self.min_joints is None:
             return None
-        return np.where(self.min_joints > DEFICIT_TOLERANCE, self.min_joints, 0.0)
+        return np.maximum(0.0, self.min_joints)
 
     def arcs(self):
         """Arco de movimento por articulação (°) = flexão máx - flexão mín."""
@@ -415,8 +531,9 @@ class FingerTracker:
 
     def active_tam(self):
         """TAM ativo (como na goniometria) = soma das flexões máximas - soma
-        dos déficits de extensão. Também desconta o viés do MediaPipe, que
-        nunca mede 0° com o dedo esticado."""
+        dos déficits de extensão (fórmula do TAM da ASSH). Numa mão saudável,
+        o "déficit" medido pode ser só o viés do MediaPipe, que raramente dá 0°
+        com o dedo esticado."""
         if self.max_joints is None:
             return None
         return float(self.max_joints.sum() - self.deficits().sum())
@@ -589,10 +706,17 @@ class Session:
     def _annotate(self, finger, rep):
         """Independência: quanto os OUTROS dedos se moveram durante esta
         repetição. Do movimento de cada um desconta-se a sensibilidade dele
-        (a faixa que o próprio tremor ocupa), para o tremor não parecer movimento."""
+        (a faixa que o próprio tremor ocupa), para o tremor não parecer movimento.
+        Numerador e denominador no mesmo sinal e na mesma janela: o TAM dos dados
+        brutos do vale ao pico desta repetição (a amplitude dela é o pico menos o
+        vale nessa janela)."""
         if rep.t_start is None:
             return
-        window = [vals for tt, vals in self.history if rep.t_start - 0.2 <= tt <= rep.t_end]
+        window = []
+        if rep.t_raw_start is not None:
+            window = [vals for tt, vals in self.history if rep.t_raw_start <= tt <= rep.t_raw_peak]
+        if len(window) < 3:                  # sem os extremos nos dados brutos: janela do detector
+            window = [vals for tt, vals in self.history if rep.t_start - 0.2 <= tt <= rep.t_end]
         if len(window) < 3:
             return
         V = np.array(window)

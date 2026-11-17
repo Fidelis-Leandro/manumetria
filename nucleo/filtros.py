@@ -11,11 +11,9 @@ ManuMetria (nucleo/kinematics.py).
 
 Onde se aplica (registrado em cada avaliação, chave "nas_medidas"):
   - padrão: SÓ NA EXIBIÇÃO AO VIVO (valor "Agora", dica da mão 3D, gráfico do
-    TAM nos últimos 20 s). As medidas da sessão usam os dados brutos, como na
-    v1.0.0: a suavização achata os picos (na gravação de referência, com
-    EMA + Kalman, -10 pontos percentuais no TAM ativo do indicador e até -60%
-    na velocidade de pico, e a mão saudável ganhava um falso "fora do arco
-    funcional");
+    TAM nos últimos 20 s). As medidas da sessão usam os dados brutos, iguais às
+    do modo Desligada: a suavização achata os picos (efeito medido na gravação
+    de referência: tabela no README);
   - nas_medidas = True (opção em Configurações): também nas medidas, antes do
     contador de repetições, como no pipeline do artigo.
 

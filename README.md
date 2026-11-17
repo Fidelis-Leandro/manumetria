@@ -51,7 +51,7 @@ O passo a passo manual (e a solução dos problemas mais comuns) está em [INSTA
    dedos contam os movimentos ao vivo; clique num dedo para ver os detalhes.
 6. A tela de avaliação abre com a **câmera** em destaque e a **mão 3D** na miniatura do canto (clique na
    miniatura, ou nos botões *Câmera* / *Modelo 3D*, para trocar). Na mão 3D, cada esfera de articulação tem a cor do seu dedo, conforme o % do normal do TAM ativo na
-   sessão: vermelho abaixo de 50%, amarelo de 50 a 75% e verde acima de 75% (cinza enquanto não há
+   sessão: vermelho abaixo de 50%, amarelo de 50% até abaixo de 75% e verde a partir de 75% (cinza enquanto não há
    medidas). Arraste para girar e passe o mouse sobre uma articulação para ver o nome e os valores dela.
 7. Clique em **Encerrar sessão**. No relatório, escreva as observações, faça o **reteste** quando indicado e
    **salve na ficha**. Depois, gere o **PDF** ou o **CSV**.
@@ -79,6 +79,26 @@ polpa–palma, repetições (movimento / parcial / completa), velocidades de fle
 dedos e contribuição de cada articulação, abertura dos dedos e do polegar, tremor, confiabilidade da
 avaliação, erro de medida por teste–reteste (MDC), mudança real, tendência e platô.
 
+### Mudança de método na versão 1.2.0
+
+A versão 1.2.0 (auditoria dos cálculos, [docs/AUDITORIA_CALCULOS.md](docs/AUDITORIA_CALCULOS.md)) mudou a
+forma de calcular algumas medidas:
+
+- ângulos por decomposição por osso, recomendação ISB (Wu et al., 2005), a mesma conta da versão web e do
+  Hand Filter Lab: a abdução não entra mais na flexão;
+- amplitude, classificação, velocidades e excursão de cada repetição pelos dados brutos, com início e fim
+  pelo critério da meia sensibilidade (pausas não entram no tempo);
+- déficit de extensão sem a tolerância de 3°;
+- independência com o mesmo sinal no numerador e no denominador;
+- SPARC sobre a norma das velocidades articulares;
+- na ficha, a mudança da extensão é classificada pelo déficit (aumentar a hiperextensão não conta como
+  melhora).
+
+Por isso, as avaliações salvas antes da 1.2.0 **não são comparáveis** às novas até serem atualizadas: abra
+**Configurações > Recalcular avaliações**. O recálculo passa os pontos gravados pelo cálculo novo, mostra o que
+muda antes de gravar e guarda o resultado anterior na própria avaliação. As avaliações feitas antes de
+15/10/2026 não têm pontos gravados e **ficam no método antigo**.
+
 ### Tratamento do sinal
 
 Os ângulos são calculados quadro a quadro a partir dos pontos do MediaPipe. O que o código faz, nesta ordem:
@@ -102,20 +122,19 @@ Os ângulos são calculados quadro a quadro a partir dos pontos do MediaPipe. O 
   **Por padrão, o filtro vale só para a exibição ao vivo** (valor "Agora" das articulações, dica da mão
   3D e gráfico "TAM nos últimos 20 s"). **Todas as medidas da sessão usam os dados brutos** (máximos,
   mínimos, déficits, TAM ativo, % do normal, repetições, velocidades, SPARC, independência, PDF e CSV),
-  exatamente como na versão 1.0.0. Motivo: a suavização **achata os picos**. Na gravação de referência
-  (mão saudável), aplicando EMA + Kalman também nas medidas:
+  iguais às do modo Desligada. Motivo: a suavização **achata os picos**. Na gravação de referência
+  (mão saudável, cálculo da versão 1.2.0), aplicando EMA + Kalman também nas medidas:
 
   | Dedo | Repetições | TAM ativo (% do normal) | Velocidade de pico (°/s) |
   |---|---|---|---|
-  | Polegar | 33 → 21 | 66 → 62 | 343 → 134 (−61%) |
-  | Indicador | 24 → 17 | 99 → 89 | 319 → 179 (−44%) |
-  | Médio | 27 → 21 | 104 → 95 | 276 → 165 (−40%) |
-  | Anelar | 25 → 21 | 107 → 97 | 281 → 191 (−32%) |
-  | Mínimo | 24 → 17 | 105 → 97 | 340 → 289 (−15%) |
+  | Polegar | 32 → 21 | 65 → 61 | 332 → 111 (−66%) |
+  | Indicador | 23 → 19 | 98 → 88 | 246 → 182 (−26%) |
+  | Médio | 31 → 22 | 104 → 94 | 237 → 165 (−30%) |
+  | Anelar | 27 → 21 | 107 → 98 | 278 → 172 (−38%) |
+  | Mínimo | 25 → 16 | 108 → 99 | 372 → 266 (−29%) |
 
-  (dados brutos → suavizado nas medidas). A MCP do indicador cai de 74,6° para 65,3° e a mão saudável
-  passa a ser apontada como "fora do arco funcional" (71°), uma limitação falsa
-  ([comparação](docs/filtros_comparacao.png)).
+  (dados brutos → suavizado nas medidas). A flexão máxima da MCP do indicador cai de 81,5° para 71,1°,
+  no limite do arco funcional (71°) ([comparação](docs/filtros_comparacao.png)).
 
   Para reproduzir o pipeline do artigo, marque em Configurações **"Aplicar a suavização também nas
   medidas"**: o filtro entra antes do contador de repetições e de todas as medidas. O filtro só usa a
@@ -125,20 +144,54 @@ Os ângulos são calculados quadro a quadro a partir dos pontos do MediaPipe. O 
   polpa–palma usam sempre os dados brutos. Cada avaliação registra o filtro e se ele entrou nas medidas
   (PDF, CSV e dicionário de dados), e "Recalcular avaliações" usa sempre esse registro (sem registro:
   Desligada; sem a indicação de medidas: dados brutos);
-- o **contador de repetições** decide sobre a média dos últimos 8 quadros do TAM, com histerese igual à
-  sensibilidade medida na calibração (3 × o tremor parado, medido nos dados brutos); essa média não muda os
-  valores mostrados;
-- a **velocidade de pico** e a **suavidade** (SPARC) usam uma derivada por mínimos quadrados em 5 pontos
-  (Savitzky–Golay de 1ª ordem) sobre o TAM de cada repetição (dados brutos; suavizado só com a opção "também nas medidas"),
-  reamostrado em grade uniforme de 30 Hz.
+- os **ângulos** são medidos por decomposição por osso, recomendação ISB (Wu et al., 2005): cada osso tem
+  eixos próprios, e a abdução (dedo desviado para o lado) fica separada da flexão;
+- o **contador de repetições** decide QUANDO há uma repetição sobre a média dos últimos 8 quadros do TAM,
+  com histerese igual à sensibilidade medida na calibração (3 × o tremor parado, medido nos dados brutos).
+  A amplitude (pico menos vale), a classificação movimento / parcial / completa, o TAM no pico, a excursão
+  de cada articulação e as velocidades médias saem dos **dados brutos**. O início e o fim de cada subida e
+  descida seguem um critério do sistema (sem fonte na literatura): último instante a até meia sensibilidade
+  do vale, primeiro instante a até meia sensibilidade do pico. Assim, pausas não entram no tempo;
+- **déficit de extensão** = maior valor entre 0 e a menor flexão, como na fórmula do TAM da ASSH (a
+  hiperextensão conta 0);
+- a **velocidade de pico** usa uma derivada por mínimos quadrados em 5 pontos (Savitzky–Golay de 1ª ordem)
+  do TAM de cada repetição, e a **suavidade** (SPARC, Balasubramanian et al., 2015) a norma das velocidades
+  das articulações do dedo, em grade uniforme de 30 Hz (dados brutos; suavizados só com a opção "também nas
+  medidas").
 
 ### Limites
 
-- As medidas são **estimativas por câmera comum**, sem marcadores: não substituem a goniometria.
+- As medidas são **estimativas por câmera comum**, sem marcadores: não substituem a goniometria. O sistema
+  ainda não foi comparado com o goniômetro manual; o erro em graus não é conhecido (o reteste estima quanto a
+  medida varia ao repetir).
 - O erro aumenta com a mão de lado; por isso só entram na medida os quadros com a palma até 60° da frente.
+- A rotação de cada dedo em torno do próprio eixo não aparece nos 21 pontos da câmera, e a base do
+  metacarpo não é marcada: na MCP, a linha do punho até a base do dedo faz o papel do metacarpo.
 - Com uma câmera só, dedos escondidos atrás de outros não são medidos.
 - A interpretação (resumo, mudança real, platô) é feita por regras explícitas: apoio à decisão, não
   diagnóstico.
+
+### Verificação dos cálculos
+
+Cada medida tem um teste automático de **resposta conhecida** (`tests\test_auditoria.py`, rodado pelo
+`tests\testar.py`); o relatório completo da auditoria da versão 1.2.0 está em
+[docs/AUDITORIA_CALCULOS.md](docs/AUDITORIA_CALCULOS.md).
+
+| Medida | Como é testada |
+|---|---|
+| Ângulos (MCP, PIP, DIP, IP) com sinal | autoteste do Hand Filter Lab e 300 poses do modelo de mão do lab com abdução (erro ~0), mão girada no espaço, hiperextensão, mão esquerda = espelho da direita; prova contra o JavaScript original na gravação (diferença ≤ 0,005°) |
+| TAM, TAM ativo, déficit, arco, % do normal, classificação | sequências de ângulos com máximos e mínimos conhecidos, déficit = max(0, menor flexão), dedo sem dados, TAM negativo |
+| Repetições, classificação, velocidades, ciclo, cadência, regularidade, tendências, esforço | sinais em cosseno com amplitude e período conhecidos (amplitude 200°, velocidade de pico = A·π/T), instantes de início e fim refeitos à parte, pausa antes e no topo, queda linear de amplitude, uma repetição só, nenhuma repetição |
+| Derivada e SPARC | seno com derivada exata (resposta do filtro de Savitzky–Golay), movimento em sino, velocidade nula, articulações em sentidos opostos (norma das velocidades) |
+| Independência, acoplamento, contribuição | um dedo sozinho (100%) e todos juntos (acoplamento = (A − sensibilidade)/A); divisão conhecida entre as articulações |
+| Sensibilidade e calibração | ruído de desvio padrão conhecido (3 × desvio), calibração sem dados (5°) |
+| Arco funcional, Strickland | contas feitas à mão com as faixas de Bain et al. (2015) e as classes de Strickland e Glogovac (1980) |
+| Abertura dos dedos e do polegar, polpa–palma | mão plana com direções e distâncias definidas |
+| Tremor | oscilação senoidal de frequência e amplitude conhecidas (frequência e RMS = A/√2) |
+| Erro de medida (MDC), mudança real, tendência, platô | pares teste–reteste com o MDC calculado à mão (1,96 × desvio das diferenças), +5 pp por semana |
+| Tela, banco, CSV e recálculo | na gravação de referência: o salvo é o que a tela mostra, o CSV converte as unidades certas, o dicionário cobre todas as colunas e "Recalcular avaliações" num banco temporário reproduz o resultado |
+| Números citados nos textos | conferidos na gravação de referência (quadros descartados, tremor parado, tamanho da mão na imagem, tabela dos filtros) |
+| Checagem clínica | a mão saudável da gravação de referência não recebe nenhuma limitação |
 
 ### Dados e privacidade
 

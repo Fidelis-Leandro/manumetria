@@ -39,7 +39,9 @@ a = kin.joint_angles(hand([30] * 4, 30, noise=0), "Right")
 check("flexão de 30° (PIP) dá ângulos positivos", all((a[f] > 0).all() for f in kin.FINGERS),
       f"(indicador MCP/PIP/DIP = {np.round(a['index'], 1)})")
 check("PIP do indicador mede a flexão aplicada", abs(a["index"][1] - 30) < 0.5)
-check("MCP do indicador = 0,6 x flexão (sem o desvio lateral)", abs(a["index"][0] - 18) < 0.5)
+# A mão sintética dobra a MCP em torno do eixo x da imagem; a decomposição por osso (ISB) mede em
+# torno do eixo lateral do metacarpo (linha punho -> base, ~15° oblíqua ao dedo nesse modelo): < 1°.
+check("MCP do indicador = 0,6 x flexão (sem o desvio lateral)", abs(a["index"][0] - 18) < 1.0)
 a = kin.joint_angles(hand([-15] * 4, -15, noise=0), "Right")
 check("hiperextensão dá ângulos negativos", all((a[f] < 0).all() for f in kin.FINGERS),
       f"(indicador = {np.round(a['index'], 1)})")

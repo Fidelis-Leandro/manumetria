@@ -54,8 +54,11 @@ SECTIONS = [
 <ul>
 <li>As medidas são <b>estimativas por câmera comum</b>, sem marcadores: não substituem a goniometria.
     Use o reteste para saber o erro de medida no seu consultório.</li>
-<li>O erro cresce quando a mão gira: em teste com mão renderizada, o erro médio variou de 6° a 36°
-    conforme a vista. Por isso só entram na medida os quadros com a palma até 60° da frente.</li>
+<li>O erro cresce quando a mão gira. Por isso só entram na medida os quadros com a palma até 60° da frente.</li>
+<li>Os ângulos são medidos por decomposição por osso, recomendação ISB (Wu et al., 2005): a abdução fica
+    separada da flexão. A rotação de cada dedo em torno do próprio eixo não aparece nos pontos da câmera.</li>
+<li>O sistema ainda não foi comparado com o goniômetro manual: não há estimativa do erro em graus.
+    O reteste mostra quanto a medida varia ao repetir.</li>
 <li>Com uma câmera só, dedos escondidos atrás de um objeto ou da própria mão não são medidos.</li>
 <li>Os dados ficam só neste computador (pasta <i>dados_locais</i>); nada é enviado para a internet.</li>
 </ul>"""),
