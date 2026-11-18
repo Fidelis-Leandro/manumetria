@@ -1,5 +1,5 @@
 """
-Exportação "Dataset para pesquisa" (app/dados/dataset.py), num banco temporário com
+Exportação "Dataset para pesquisa" (manumetria/dados/dataset.py), num banco temporário com
 pacientes de teste (mão simulada com reteste, gravação de referência com o filtro
 nas medidas, avaliação sem pontos). Nada aqui toca em dados_locais.
 
@@ -29,11 +29,12 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
 sys.path.insert(0, os.path.join(ROOT, "tools"))
 import criar_demonstracao as demo  # noqa: E402
-from app.avaliador import Avaliador, analisar  # noqa: E402
-from app.dados import dataset  # noqa: E402
-from app.dados.banco import Banco  # noqa: E402
-from app.dados.resultados import retest_summary  # noqa: E402
-from nucleo import capture, filtros  # noqa: E402
+from manumetria.avaliacao.motor import Avaliador, analisar  # noqa: E402
+from manumetria.avaliacao.resultados import retest_summary  # noqa: E402
+from manumetria.calculo import filtros  # noqa: E402
+from manumetria.captura import gravacao  # noqa: E402
+from manumetria.dados import dataset  # noqa: E402
+from manumetria.dados.banco import Banco  # noqa: E402
 
 try:
     import pandas as pd
@@ -66,7 +67,8 @@ PLAN = {"low": [[5, 8, 4]] * 4, "peak": [[60, 80, 50]] * 4, "thumb": (8, 50), "r
 
 
 def simulated(root, start, with_retest):
-    """Avaliação da mão simulada (motor da câmera), com os pontos gravados em `root`."""
+    """Avaliação da mão simulada (motor da câmera), com os pontos gravados em `root`
+    (a pasta do banco temporário: os caminhos salvos são relativos a ela)."""
     av = Avaliador()
     av.started_at = start
     for raw in demo.frames(PLAN, 1000.0, False):
@@ -78,8 +80,8 @@ def simulated(root, start, with_retest):
         for raw in demo.frames(dict(PLAN, peak=[[55, 75, 45]] * 4), av.frames[-1]["t"] + 60, False):
             again.step(raw, raw["t"])
         out["reteste"] = retest_summary(again.results(again.frames[-1]["t"], "simulação"))
-    out["pontos"] = f"dados_locais/pontos/sessao_{start:%Y%m%d_%H%M%S}.npz"
-    capture.save_recording(os.path.join(root, *out["pontos"].split("/")), av.frames)
+    out["pontos"] = f"pontos/sessao_{start:%Y%m%d_%H%M%S}.npz"
+    gravacao.save_recording(os.path.join(root, *out["pontos"].split("/")), av.frames)
     return out
 
 
@@ -87,15 +89,15 @@ def build(root):
     db = Banco(os.path.join(root, "dados_locais", "avaliacoes.sqlite"))
     a = db.salvar_paciente(PATIENTS[0])
     b = db.salvar_paciente(PATIENTS[1])
-    db.salvar_sessao(a, simulated(root, datetime.datetime(2026, 9, 24, 14, 0), True), "Sem dor. Nome: Ana B.")
-    db.salvar_sessao(a, simulated(root, datetime.datetime(2026, 10, 1, 14, 30), False), "")
+    db.salvar_sessao(a, simulated(db.root, datetime.datetime(2026, 9, 24, 14, 0), True), "Sem dor. Nome: Ana B.")
+    db.salvar_sessao(a, simulated(db.root, datetime.datetime(2026, 10, 1, 14, 30), False), "")
     # gravação de referência (mão saudável real) com EMA + Kalman também nas medidas
-    rows = capture.load_recording(RECORDING)
+    rows = gravacao.load_recording(RECORDING)
     out = analisar(rows, filtro=filtros.registro(filtros.CASCATA, nas_medidas=True)).results(
         rows[-1]["t"], f"gravação {RECORDING}")
     out["inicio"] = "2026-10-03T09:00:00"
-    out["pontos"] = "dados_locais/pontos/referencia.npz"
-    shutil.copy(RECORDING, os.path.join(root, "dados_locais", "pontos", "referencia.npz"))
+    out["pontos"] = "pontos/referencia.npz"
+    shutil.copy(RECORDING, os.path.join(db.points_dir, "referencia.npz"))
     db.salvar_sessao(b, out, "")
     # avaliação sem pontos gravados (como as anteriores a 15/10/2026)
     old = dict(out, inicio="2026-09-01T09:00:00", pontos=None)
@@ -274,7 +276,7 @@ with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmp:
     os.makedirs(os.path.join(tmp, "dados_locais", "pontos"))
     db = build(tmp)
     out1 = os.path.join(tmp, "exp1")
-    summary = dataset.exportar(db, out1, root=tmp)
+    summary = dataset.exportar(db, out1)
     t = check_export(out1, db, "banco de teste", dataset.Opcoes())
 
     ev = {r["medidas_origem"]: r for r in t["avaliacoes.csv"]}
@@ -304,7 +306,7 @@ with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmp:
 
     # mesmo banco -> mesmos bytes (menos o LEIA-ME e os checksums, que têm a data)
     out2 = os.path.join(tmp, "exp2")
-    dataset.exportar(db, out2, root=tmp)
+    dataset.exportar(db, out2)
     same = all(open(os.path.join(out1, *f.split("/")), "rb").read() == open(os.path.join(out2, *f.split("/")), "rb").read()
                for f in all_files(out1) if f not in ("LEIA-ME.md", "checksums.sha256"))
     check("reprodutível: exportar de novo gera os mesmos bytes nos CSV e .csv.gz", same)
@@ -317,30 +319,25 @@ with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmp:
     # opções: texto livre, datas exatas e imagem
     out3 = os.path.join(tmp, "exp3")
     opts = dataset.Opcoes(incluir_texto_livre=True, datas_exatas=True, incluir_imagem=True)
-    dataset.exportar(db, out3, opts, root=tmp)
+    dataset.exportar(db, out3, opts)
     t3 = check_export(out3, db, "com as opções", opts)
     check("opções: condição só com texto livre marcado; coordenadas da imagem só com a opção",
           any(r["condicao"] == PATIENTS[0]["condicao"] for r in t3["pacientes.csv"])
           and "lm20_img_y" in raw_bytes(out3, next(f for f in all_files(out3) if f.startswith("quadros/")))
           .split(b"\n", 1)[0].decode() and "lm20_img_y" not in str(t["avaliacoes.csv"][0]))
     try:
-        dataset.exportar(db, out3, root=tmp)
+        dataset.exportar(db, out3)
         refused = False
     except FileExistsError:
         refused = True
     check("não grava por cima de uma exportação existente", refused)
 
     # código fixo: apagar uma avaliação não renumera as outras (a exclusão apaga os pontos
-    # pela pasta do projeto: aponta para a pasta temporária para não tocar em dados_locais)
+    # da pasta do banco temporário, nunca de dados_locais)
     first = [r["id_avaliacao"] for r in t["avaliacoes.csv"] if r["id_pesquisa"] == ana["id_pesquisa"]]
-    from nucleo import caminhos  # noqa: E402
-    old_root, caminhos.ROOT = caminhos.ROOT, tmp
-    try:
-        db.excluir_sessao(next(s["id"] for s in db.sessoes(ana["id"]) if s["codigo"] == "A01"))
-    finally:
-        caminhos.ROOT = old_root
+    db.excluir_sessao(next(s["id"] for s in db.sessoes(ana["id"]) if s["codigo"] == "A01"))
     out4 = os.path.join(tmp, "exp4")
-    dataset.exportar(db, out4, root=tmp)
+    dataset.exportar(db, out4)
     after = [r["id_avaliacao"] for r in table(out4, "avaliacoes.csv") if r["id_pesquisa"] == ana["id_pesquisa"]]
     check("id_avaliacao fixo: apagar a A01 não muda o código da A02 (nem o nome do arquivo de quadros)",
           first == [f"{ana['id_pesquisa']}-A01", f"{ana['id_pesquisa']}-A02"]

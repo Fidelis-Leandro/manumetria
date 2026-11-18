@@ -1,5 +1,5 @@
 """
-Auditoria dos cálculos (v1.2.0): testes de resposta conhecida para cada medida, casos-limite,
+Auditoria dos cálculos: testes de resposta conhecida para cada medida, casos-limite,
 coerência entre o que é calculado, salvo, exportado e recalculado, e conferência dos números
 afirmados nos textos (README, Ajuda, PDF, dicionário de dados, comentários) contra a gravação
 de referência. Relatório completo: docs/AUDITORIA_CALCULOS.md.
@@ -8,6 +8,7 @@ de referência. Relatório completo: docs/AUDITORIA_CALCULOS.md.
 """
 
 import os
+import shutil
 import sys
 import tempfile
 
@@ -16,12 +17,12 @@ import numpy as np
 sys.stdout.reconfigure(encoding="utf-8", errors="replace")      # símbolos (π, √, ×) no console do Windows
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
-from nucleo import capture, geometria, medidas  # noqa: E402
-from nucleo import kinematics as kin  # noqa: E402
-from app.avaliador import analisar  # noqa: E402
-from app.dados import exportacao, interpretacao as interp, recalculo  # noqa: E402
-from app.dados import resultados as res  # noqa: E402
-from app.dados.banco import Banco  # noqa: E402
+from manumetria.avaliacao import interpretacao as interp  # noqa: E402
+from manumetria.avaliacao.motor import analisar  # noqa: E402
+from manumetria.calculo import geometria, goniometria, medidas, repeticoes, sessao, sinal  # noqa: E402
+from manumetria.captura import gravacao  # noqa: E402
+from manumetria.dados import planilha, recalculo  # noqa: E402
+from manumetria.dados.banco import Banco  # noqa: E402
 
 RECORDING = os.path.join(ROOT, "tests", "dados", "gravacao_referencia.npz")
 FS = 30.0
@@ -76,7 +77,7 @@ def lab_hand(pose):
     lm[2] = cmc + m * LAB_LEN["thumb"][0]
     lm[3] = lm[2] + _rot(m, k, tm_) * LAB_LEN["thumb"][1]
     lm[4] = lm[3] + _rot(m, k, tm_ + ti_) * LAB_LEN["thumb"][2]
-    for f, b in kin.LONG_BASES.items():
+    for f, b in goniometria.LONG_BASES.items():
         mcp, pip, dip, abd = pose.get(f, (0.0, 0.0, 0.0, 0.0))
         d0 = _n(LAB_MCP[f])
         k2 = _n(lat - d0 * (lat @ d0))
@@ -111,28 +112,28 @@ SELF_TEST = [   # casos do gonioSelfTest do lab: (pose, dedo, verdade)
 worst = 0.0
 for pose, f, truth in SELF_TEST:
     for hand in ("Right", "Left"):
-        worst = max(worst, float(np.abs(kin.joint_angles(lab_to_world(lab_hand(pose), hand), hand)[f] - truth).max()))
+        worst = max(worst, float(np.abs(goniometria.joint_angles(lab_to_world(lab_hand(pose), hand), hand)[f] - truth).max()))
 check("autoteste do lab portado (10 casos, mão direita e esquerda): erro ~0", worst < 1e-9, f"{worst:.1e}")
 
 # mão inteira girada 70° no espaço (caso do autoteste do lab): os ângulos não mudam
 lm = lab_hand({"index": (60, 45, 20, 10)})
 lm_rot = np.array([_rot(p, _n([0.3, 1, 0.5]), 70) for p in lm])
-a = kin.joint_angles(lab_to_world(lm_rot), "Right")["index"]
+a = goniometria.joint_angles(lab_to_world(lm_rot), "Right")["index"]
 check("mão girada 70° no espaço: 60/45/20 (com 10° de abdução)", np.allclose(a, [60, 45, 20], atol=1e-9), f"{a}")
-a = kin.joint_angles(lab_to_world(lab_hand({"index": (60, 0, 0, 20)})), "Right")["index"]
+a = goniometria.joint_angles(lab_to_world(lab_hand({"index": (60, 0, 0, 20)})), "Right")["index"]
 check("D1: MCP 60° com 20° de abdução -> 60,0° (a abdução não entra na flexão)", abs(a[0] - 60) < 1e-9, f"{a[0]:.4f}")
-a = kin.joint_angles(lab_to_world(lab_hand({"index": (40, 70, 30, 15)})), "Right")["index"]
+a = goniometria.joint_angles(lab_to_world(lab_hand({"index": (40, 70, 30, 15)})), "Right")["index"]
 check("D1: 40/70/30 com 15° de abdução -> 40/70/30", np.allclose(a, [40, 70, 30], atol=1e-9), f"{a}")
 
 rng = np.random.default_rng(7)
 worst = 0.0
 for _ in range(300):
     pose = {f: (rng.uniform(-15, 90), rng.uniform(0, 110), rng.uniform(0, 80), rng.uniform(-10, 25))
-            for f in kin.LONG_BASES}
+            for f in goniometria.LONG_BASES}
     pose["thumb"] = (rng.uniform(0, 1), rng.uniform(-10, 60), rng.uniform(-10, 80))
     hand = "Right" if rng.random() < 0.5 else "Left"
-    ang = kin.joint_angles(lab_to_world(lab_hand(pose), hand), hand)
-    for f in kin.FINGERS:
+    ang = goniometria.joint_angles(lab_to_world(lab_hand(pose), hand), hand)
+    for f in goniometria.FINGERS:
         truth = pose[f][1:] if f == "thumb" else pose[f][:3]
         worst = max(worst, float(np.abs(ang[f] - truth).max()))
 check("300 poses aleatórias com abdução (mãos direita e esquerda): erro ~0", worst < 1e-9, f"{worst:.1e}")
@@ -142,37 +143,37 @@ check("300 poses aleatórias com abdução (mãos direita e esquerda): erro ~0",
 # pequena abdução, então a MCP difere até ~3,4°; PIP, DIP e polegar ficam perto da verdade.
 for fl, th in [(0, 0), (30, 20), (90, 60), (-20, -10)]:
     w = geometria.build_hand_world([fl] * 4, th)
-    a, b = kin.joint_angles(w, "Right"), kin.joint_angles(mirror(w), "Left")
-    check(f"mão esquerda (espelhada) = direita, PIP {fl}°", all(np.allclose(a[f], b[f], atol=1e-9) for f in kin.FINGERS))
+    a, b = goniometria.joint_angles(w, "Right"), goniometria.joint_angles(mirror(w), "Left")
+    check(f"mão esquerda (espelhada) = direita, PIP {fl}°", all(np.allclose(a[f], b[f], atol=1e-9) for f in goniometria.FINGERS))
     check(f"mão sintética: PIP {fl}° e DIP {0.7 * fl:.0f}° (±2°), MCP {0.6 * fl:.0f}° (±3,5°)",
           all(abs(a[f][1] - fl) < 2 and abs(a[f][2] - 0.7 * fl) < 2 and abs(a[f][0] - 0.6 * fl) < 3.5
-              for f in kin.FINGERS[1:]), f"indicador {np.round(a['index'], 1)}")
+              for f in goniometria.FINGERS[1:]), f"indicador {np.round(a['index'], 1)}")
     check(f"mão sintética: polegar MCP {0.4 * th:.0f}° e IP {th}° (±0,5°)",
           abs(a["thumb"][0] - 0.4 * th) < 0.5 and abs(a["thumb"][1] - th) < 0.5)
 w = geometria.build_hand_world([-20] * 4, -10)
-check("hiperextensão sai negativa (dedos e polegar)", all(kin.joint_angles(w, "Right")[f][1] < -9 for f in kin.FINGERS))
-check("sem lado: ângulo 3D sem sinal (>= 0)", all((kin.joint_angles(w)[f] >= 0).all() for f in kin.FINGERS))
-check("lado trocado inverte o sinal", kin.joint_angles(geometria.build_hand_world([40] * 4, 0), "Left")["index"][1] < 0)
-check("ângulo impossível: quadro descartado", not kin.plausible({"index": np.array([0, 131.0, 0])})
-      and not kin.plausible({"index": np.array([-61.0, 0, 0])}) and kin.plausible({"index": np.array([-60.0, 130, 0])}))
+check("hiperextensão sai negativa (dedos e polegar)", all(goniometria.joint_angles(w, "Right")[f][1] < -9 for f in goniometria.FINGERS))
+check("sem lado: ângulo 3D sem sinal (>= 0)", all((goniometria.joint_angles(w)[f] >= 0).all() for f in goniometria.FINGERS))
+check("lado trocado inverte o sinal", goniometria.joint_angles(geometria.build_hand_world([40] * 4, 0), "Left")["index"][1] < 0)
+check("ângulo impossível: quadro descartado", not goniometria.plausible({"index": np.array([0, 131.0, 0])})
+      and not goniometria.plausible({"index": np.array([-61.0, 0, 0])}) and goniometria.plausible({"index": np.array([-60.0, 130, 0])}))
 
 # vista da palma
 w = geometria.build_hand_world([0] * 4, 0)
 check("vista: palma de frente = 0°, mão esquerda espelhada também",
-      kin.view_angle(w, "Right") < 0.01 and kin.view_angle(mirror(w), "Left") < 0.01)
+      goniometria.view_angle(w, "Right") < 0.01 and goniometria.view_angle(mirror(w), "Left") < 0.01)
 for deg in (30, 59, 61, 90, 150):
     t = np.radians(deg)
     Ry = np.array([[np.cos(t), 0, np.sin(t)], [0, 1, 0], [-np.sin(t), 0, np.cos(t)]])
-    v = kin.view_angle(w @ Ry.T, "Right")
+    v = goniometria.view_angle(w @ Ry.T, "Right")
     check(f"vista: mão girada {deg}° = {deg}° ({'fora' if deg > 60 else 'dentro'} da medida)",
-          abs(v - deg) < 0.01 and kin.good_view(w @ Ry.T, "Right") == (deg <= 60), f"{v:.3f}")
+          abs(v - deg) < 0.01 and goniometria.good_view(w @ Ry.T, "Right") == (deg <= 60), f"{v:.3f}")
 
 
 # =============================================================================
 # 2. TAM, TAM ativo, déficit (sem tolerância), arco, % do normal, classificação
 # =============================================================================
 def tracker_with(frames, finger="index"):
-    tr = kin.FingerTracker(finger, sensitivity=5.0)
+    tr = repeticoes.FingerTracker(finger, sensitivity=5.0)
     for i, j in enumerate(frames):
         tr.update(np.array(j, float), i / FS)
     return tr
@@ -191,14 +192,14 @@ check("déficit = menor flexão; TAM ativo = 210 - 90 = 120", np.allclose(tr.def
 check("D5: sem tolerância (0,5° já conta)", tracker_with([[0.5, 0, -0.5]]).deficits().tolist() == [0.5, 0, 0])
 tr = tracker_with([[0, 0], [50, 70]], "thumb")
 check("polegar: normal 140°, TAM ativo 120 -> 85,7%", tr.normal == 140 and abs(tr.percent_normal() - 120 / 140) < 1e-12)
-check("sem dados: TAM ativo, % e arcos None", kin.FingerTracker("index").active_tam() is None
-      and kin.FingerTracker("index").percent_normal() is None and kin.FingerTracker("index").arcs() is None)
+check("sem dados: TAM ativo, % e arcos None", repeticoes.FingerTracker("index").active_tam() is None
+      and repeticoes.FingerTracker("index").percent_normal() is None and repeticoes.FingerTracker("index").arcs() is None)
 check("TAM ativo negativo (dedo rígido em flexão): 0%", tracker_with([[60, 70, 50]]).percent_normal() == 0.0)
 check("classificação: 49% ruim, 50% regular, 74,9% regular, 75% bom",
-      [kin.grade(x) for x in (0.49, 0.50, 0.749, 0.75, None)] == ["ruim", "regular", "regular", "bom", None])
+      [goniometria.grade(x) for x in (0.49, 0.50, 0.749, 0.75, None)] == ["ruim", "regular", "regular", "bom", None])
 check("D4: normais mantidos: dedos 85/105/70 = 260, polegar 60/80 = 140",
-      kin.normal_tam("index") == 260 and kin.normal_tam("thumb") == 140
-      and (kin.GRADE_FAIR, kin.GRADE_GOOD) == (0.50, 0.75))
+      goniometria.normal_tam("index") == 260 and goniometria.normal_tam("thumb") == 140
+      and (goniometria.GRADE_FAIR, goniometria.GRADE_GOOD) == (0.50, 0.75))
 
 
 # =============================================================================
@@ -216,15 +217,15 @@ def tam_series(amps, period=2.0, base=10.0, rest_before=0.3, rest_after=1.0, hol
 
 
 def run_tam(x, finger="index", sens=5.0):
-    tr = kin.FingerTracker(finger, sensitivity=sens)
+    tr = repeticoes.FingerTracker(finger, sensitivity=sens)
     share = SHARE if finger != "thumb" else np.array([0.4, 0.6])
     for i, v in enumerate(x):
         tr.update(share * v, i / FS)
     return tr
 
 
-def expected_times(x, sens=5.0, n_avg=kin.DETECTOR_SMOOTH_FRAMES):
-    """Critério da D3 refeito à parte, para UMA repetição: média de n_avg quadros; início = último
+def expected_times(x, sens=5.0, n_avg=repeticoes.DETECTOR_SMOOTH_FRAMES):
+    """Critério dos tempos da repetição refeito à parte, para UMA repetição: média de n_avg quadros; início = último
     instante a até sens/2 do vale antes do pico; fim = primeiro instante a até sens/2 do pico."""
     t = np.arange(len(x)) / FS
     avg = np.convolve(x, np.ones(n_avg) / n_avg, mode="valid")
@@ -290,61 +291,61 @@ tr = run_tam(tam_series([200]))
 q = tr.quality()
 check("uma repetição só: sem ciclo, cadência, regularidade, tendência e esforço",
       all(q[k] is None for k in ("cycle_s", "cadence", "cv", "regularity", "amp_trend", "vel_trend", "effort")))
-check("sem repetições: qualidade toda None", all(v is None for v in kin.FingerTracker("index").quality().values()))
+check("sem repetições: qualidade toda None", all(v is None for v in repeticoes.FingerTracker("index").quality().values()))
 check("sem repetições: independência, contribuição e repetições fortes vazias",
-      kin.FingerTracker("index").independence() is None and kin.FingerTracker("index").contribution() is None
-      and kin.FingerTracker("index").strong_reps() == 0)
-tr = kin.FingerTracker("index", 5.0)
+      repeticoes.FingerTracker("index").independence() is None and repeticoes.FingerTracker("index").contribution() is None
+      and repeticoes.FingerTracker("index").strong_reps() == 0)
+tr = repeticoes.FingerTracker("index", 5.0)
 for i, v in enumerate(tam_series([200] * 2)):
     tr.update(SHARE * v)                          # quadros sem horário: sem dados brutos com tempo
 check("sem horário nos quadros: conta as repetições (valores no TAM médio), sem velocidades",
       len(tr.reps) == 2 and all(r.flex_velocity is None for r in tr.reps))
-check("tendência: menos de 6 valores ou início <= 0 -> None", kin.trend([1] * 5) is None and kin.trend(range(6)) is None)
+check("tendência: menos de 6 valores ou início <= 0 -> None", sinal.trend([1] * 5) is None and sinal.trend(range(6)) is None)
 
 # derivada e SPARC
 xs = np.sin(2 * np.pi * np.arange(90) / FS)
 H = (2 * np.sin(2 * 2 * np.pi / FS) + np.sin(2 * np.pi / FS)) / 5 / (2 * np.pi / FS)   # resposta da derivada SG
 check("derivada de Savitzky-Golay de um seno de 1 Hz: 2π·cos × resposta teórica do filtro",
-      np.allclose(kin.derivative(xs, FS)[2:-2], H * 2 * np.pi * np.cos(2 * np.pi * np.arange(90) / FS)[2:-2], atol=1e-9))
-check("SPARC: velocidade nula ou curta -> None", kin.sparc(np.zeros(20)) is None and kin.sparc(np.ones(5)) is None)
+      np.allclose(sinal.derivative(xs, FS)[2:-2], H * 2 * np.pi * np.cos(2 * np.pi * np.arange(90) / FS)[2:-2], atol=1e-9))
+check("SPARC: velocidade nula ou curta -> None", sinal.sparc(np.zeros(20)) is None and sinal.sparc(np.ones(5)) is None)
 s_ = np.linspace(0, 1, 31)
 mj = 60 * (10 * s_ ** 3 - 15 * s_ ** 4 + 6 * s_ ** 5)         # mínimo jerk: 0 -> 60°
 J = np.column_stack([mj, -mj, np.zeros_like(mj)])            # MCP flete, PIP estende na mesma velocidade
 check("D7: uma articulação flete e outra estende: derivada do TAM = 0 (SPARC impossível) ...",
-      np.allclose(kin.derivative(J.sum(axis=1)), 0) and kin.sparc(np.abs(kin.derivative(J.sum(axis=1)))) is None)
-sp = kin.sparc(kin.joint_speed(J))
+      np.allclose(sinal.derivative(J.sum(axis=1)), 0) and sinal.sparc(np.abs(sinal.derivative(J.sum(axis=1)))) is None)
+sp = sinal.sparc(sinal.joint_speed(J))
 check("D7: ... mas o SPARC da norma das velocidades é calculado (= o de uma articulação só)",
-      sp is not None and abs(sp - kin.sparc(np.abs(kin.derivative(mj)))) < 1e-9, f"{sp}")
+      sp is not None and abs(sp - sinal.sparc(np.abs(sinal.derivative(mj)))) < 1e-9, f"{sp}")
 
 
 # =============================================================================
 # 4. Independência, acoplamento, calibração
 # =============================================================================
 def session_moving(movers, A=200.0, sens=5.0):
-    s = kin.Session({f: sens for f in kin.FINGERS})
+    s = sessao.Session({f: sens for f in goniometria.FINGERS})
     x = tam_series([A] * 4)
     for i, v in enumerate(x):
         s.update({f: (np.ones(2) / 2 if f == "thumb" else np.ones(3) / 3) * (v if f in movers else 10.0)
-                  for f in kin.FINGERS}, i / FS)
+                  for f in goniometria.FINGERS}, i / FS)
     return s
 
 
 ind = session_moving({"index"}).trackers["index"].independence()
 check("independência: só o indicador se move -> 100%", ind == 1.0, f"{ind}")
-s = session_moving(set(kin.FINGERS))
+s = session_moving(set(goniometria.FINGERS))
 cp = s.trackers["index"].coupling()
 check("D6: mesmo movimento nos dois dedos -> acoplamento = (A - sensibilidade)/A = 0,975",
       all(abs(v - 195 / 200) < 1e-9 for v in cp.values()), f"{cp}")
 check("D6: independência = 1 - 0,975 = 2,5%", abs(s.trackers["index"].independence() - 0.025) < 1e-9)
 
-cal = kin.Calibration()
+cal = sessao.Calibration()
 rng = np.random.default_rng(3)
 while not cal.done():
-    cal.add({f: rng.normal(0, 1.0 / np.sqrt(2 if f == "thumb" else 3), 2 if f == "thumb" else 3) for f in kin.FINGERS})
+    cal.add({f: rng.normal(0, 1.0 / np.sqrt(2 if f == "thumb" else 3), 2 if f == "thumb" else 3) for f in goniometria.FINGERS})
 stds = {f: np.std(v) for f, v in cal.tams.items()}
 sens = cal.sensitivity()
 check("sensibilidade = 3 × desvio padrão do TAM na calibração", all(abs(sens[f] - 3 * stds[f]) < 1e-9 for f in sens))
-check("sensibilidade sem calibração = 5°", all(v == 5.0 for v in kin.Calibration().sensitivity().values()))
+check("sensibilidade sem calibração = 5°", all(v == 5.0 for v in sessao.Calibration().sensitivity().values()))
 
 # =============================================================================
 # 5. Medidas da mão inteira
@@ -376,7 +377,7 @@ def flat_hand(dirs_deg):
 
 P = flat_hand([-10, 0, 8, 20])
 check("abertura dos dedos: 10° / 8° / 12°",
-      np.allclose(medidas.finger_spread(P, kin.joint_angles(P, "Right")), [10, 8, 12], atol=1e-5))
+      np.allclose(medidas.finger_spread(P, goniometria.joint_angles(P, "Right")), [10, 8, 12], atol=1e-5))
 u, v = P[2] - P[1], P[5] - P[0]
 check("abertura do polegar = ângulo entre metacarpo do polegar e punho-base do indicador",
       abs(medidas.thumb_opening(P) - np.degrees(np.arccos(u @ v / np.linalg.norm(u) / np.linalg.norm(v)))) < 1e-6)
@@ -390,7 +391,7 @@ check("polpa-palma: 5 cm menos o zero do dedo",
 def tremor_run(freq, amp_m, secs=6.0):
     tm = medidas.TremorMeter()
     base = geometria.build_hand_world([0] * 4, 0)
-    ang = kin.joint_angles(base, "Right")
+    ang = goniometria.joint_angles(base, "Right")
     for i in range(int(secs * FS)):
         w = base.copy()
         w[[4, 8, 12, 16, 20], 0] += amp_m * np.sin(2 * np.pi * freq * i / FS)
@@ -408,14 +409,14 @@ check("confiabilidade: sem quadros -> baixa", medidas.session_reliability(0, 0)[
 
 
 # =============================================================================
-# 6. Erro de medida (MDC), mudança real, extensão (D9), tendência
+# 6. Erro de medida (MDC), mudança real, extensão, tendência
 # =============================================================================
 def fake(pct, mx, rt_pct, rt_mx, nivel="alta"):
     j = lambda m: [{"nome": "MCP", "min": 0.0, "max": m, "deficit": 0, "arco": m}]
     return {"confiabilidade": {"nivel": nivel},
-            "dedos": {f: {"pct_normal": pct, "articulacoes": j(mx)} for f in kin.FINGERS},
+            "dedos": {f: {"pct_normal": pct, "articulacoes": j(mx)} for f in goniometria.FINGERS},
             "reteste": {"confiabilidade": {"nivel": nivel},
-                        "dedos": {f: {"pct_normal": rt_pct, "articulacoes": j(rt_mx)} for f in kin.FINGERS}}}
+                        "dedos": {f: {"pct_normal": rt_pct, "articulacoes": j(rt_mx)} for f in goniometria.FINGERS}}}
 
 
 pairs = [(0.80, 0.76), (0.60, 0.65), (0.90, 0.88)]
@@ -440,7 +441,7 @@ check("D9: déficit 10° -> hiperextensão de 10° = melhora (déficit 10 -> 0)"
 check("D9: aumentar a hiperextensão (0 -> -15, -5 -> -20) fica sem classificação",
       ec(0, -15, 5) is None and ec(-5, -20, 5) is None and ec(-20, -5, 5) is None)
 ses = lambda day, pct: {"inicio": f"2026-01-{1 + day:02d}T10:00:00",
-                        "resultados": {"dedos": {f: {"pct_normal": pct} for f in kin.FINGERS}}}
+                        "resultados": {"dedos": {f: {"pct_normal": pct} for f in goniometria.FINGERS}}}
 t_up = interp.trend([ses(0, 0.40), ses(7, 0.45), ses(14, 0.50), ses(21, 0.55)], "index", mdc_pp=3)
 check("tendência: +5 pp por semana; platô só se as 3 últimas variam até o MDC",
       abs(t_up["pp_semana"] - 5) < 1e-9 and t_up["plato"] is False
@@ -449,29 +450,29 @@ check("tendência: +5 pp por semana; platô só se as 3 últimas variam até o M
 # =============================================================================
 # 7. Gravação de referência: tela = salvo = CSV = recálculo, e os números afirmados nos textos
 # =============================================================================
-rows = capture.load_recording(RECORDING)
+rows = gravacao.load_recording(RECORDING)
 av = analisar(rows)
 out = av.results(rows[-1]["t"], "gravação")
 same = True
-for f in kin.FINGERS:
+for f in goniometria.FINGERS:
     tr, d = av.session.trackers[f], out["dedos"][f]
     same &= d["pct_normal"] == tr.percent_normal() and d["tam_ativo"] == max(0.0, tr.active_tam())
     same &= [j["max"] for j in d["articulacoes"]] == tr.max_joints.tolist()
     same &= [j["deficit"] for j in d["articulacoes"]] == tr.deficits().tolist()
     same &= d["qualidade"] == tr.quality() and d["movimentos"] == len(tr.reps)
 check("resultado salvo = valores que a tela mostra (mesmo FingerTracker)", same)
-row = res.finger_row("index", out["dedos"]["index"])
-col = {c: row[i] for i, c in enumerate(res.CSV_HEADER)}
+row = planilha.finger_row("index", out["dedos"]["index"])
+col = {c: row[i] for i, c in enumerate(planilha.CSV_HEADER)}
 di = out["dedos"]["index"]
 check("CSV: % do normal × 100, contribuição em %, graus arredondados",
-      col["pct_normal"] == res.csv_num(di["pct_normal"] * 100)
-      and col["mcp_contribuicao_pct"] == res.csv_num(di["articulacoes"][0]["contribuicao"] * 100)
-      and col["dip_flexao_max"] == res.csv_num(di["articulacoes"][2]["max"])
-      and col["independencia_pct"] == res.csv_num(di["independencia"] * 100)
-      and col["sensibilidade"] == res.csv_num(di["sensibilidade"], 1))
+      col["pct_normal"] == planilha.csv_num(di["pct_normal"] * 100)
+      and col["mcp_contribuicao_pct"] == planilha.csv_num(di["articulacoes"][0]["contribuicao"] * 100)
+      and col["dip_flexao_max"] == planilha.csv_num(di["articulacoes"][2]["max"])
+      and col["independencia_pct"] == planilha.csv_num(di["independencia"] * 100)
+      and col["sensibilidade"] == planilha.csv_num(di["sensibilidade"], 1))
 check("dicionário de dados: uma descrição (com unidade) para cada coluna",
-      [r[0] for r in exportacao._finger_descriptions()] == res.CSV_HEADER
-      and all(u == "%" for c, _, u in exportacao._finger_descriptions() if c.endswith("_pct") or c == "pct_normal"))
+      [r[0] for r in planilha._finger_descriptions()] == planilha.CSV_HEADER
+      and all(u == "%" for c, _, u in planilha._finger_descriptions() if c.endswith("_pct") or c == "pct_normal"))
 check("checagem clínica: a mão saudável da gravação não recebe nenhuma limitação", not interp.limitations(out),
       f"{interp.limitations(out)}")
 
@@ -479,7 +480,9 @@ check("checagem clínica: a mão saudável da gravação não recebe nenhuma lim
 with tempfile.TemporaryDirectory() as tmp:
     db = Banco(os.path.join(tmp, "teste.sqlite"))
     pid = db.salvar_paciente({"identificacao": "AUDITORIA"})
-    sid = db.salvar_sessao(pid, dict(out, pontos=os.path.relpath(RECORDING, ROOT)))
+    os.makedirs(db.points_dir)                    # pontos ao lado do banco temporário
+    shutil.copy(RECORDING, db.points_dir)
+    sid = db.salvar_sessao(pid, dict(out, pontos="pontos/" + os.path.basename(RECORDING)))
     items = recalculo.preparar(db)
     n = recalculo.aplicar(db, items)
     new = db.sessao(sid)["resultados"]
@@ -490,37 +493,37 @@ with tempfile.TemporaryDirectory() as tmp:
 
 # números afirmados nos comentários e textos
 present = [r for r in rows if r["world"] is not None]
-A = [kin.joint_angles(r["world"], "Right") for r in present]      # lado fixado na calibração: direita
-bad = [i for i, a in enumerate(A) if not kin.plausible(a)]
-views = sorted(round(kin.view_angle(present[i]["world"], "Right")) for i in bad)
+A = [goniometria.joint_angles(r["world"], "Right") for r in present]      # lado fixado na calibração: direita
+bad = [i for i, a in enumerate(A) if not goniometria.plausible(a)]
+views = sorted(round(goniometria.view_angle(present[i]["world"], "Right")) for i in bad)
 check("texto: 3 de 1.550 quadros com ângulo impossível, com a mão a 75-128° da palma; 3 descartados na avaliação",
       (len(bad), len(present)) == (3, 1550) and (views[0], views[-1]) == (75, 128) and out["descartados"] == 3,
       f"{views}")
-tam = np.array([[a[f].sum() for f in kin.FINGERS] for a in A])
+tam = np.array([[a[f].sum() for f in goniometria.FINGERS] for a in A])
 calm = min(range(len(tam) - 60), key=lambda i: tam[i:i + 60].std(axis=0).max())
 sd = tam[calm:calm + 60].std(axis=0)
 check("texto: TAM parado com desvio de 0,5-0,9° por dedo; TAM mediano da mão aberta ~30°",
       0.5 < sd.min() and sd.max() < 0.9 and abs(np.median(tam[calm:calm + 60, 1:]) - 30) < 1, f"{np.round(sd, 2)}")
 check("texto: tremor da mão saudável parada ~1,2 mm, sem oscilação rítmica",
       abs(out["mao_inteira"]["tremor"]["rms_mm"] - 1.2) < 0.05 and not out["mao_inteira"]["tremor"]["ritmico"])
-openf = [a for a in A if kin.plausible(a) and max(a[f].sum() for f in kin.FINGERS[1:]) < 60]
+openf = [a for a in A if goniometria.plausible(a) and max(a[f].sum() for f in goniometria.FINGERS[1:]) < 60]
 check("texto: mão aberta (TAM < 60°): PIP até 44°, MCP até -45°",
-      round(max(max(a[f][1] for f in kin.FINGERS[1:]) for a in openf)) == 44
-      and round(min(min(a[f][0] for f in kin.FINGERS[1:]) for a in openf)) == -45)
+      round(max(max(a[f][1] for f in goniometria.FINGERS[1:]) for a in openf)) == 44
+      and round(min(min(a[f][0] for f in goniometria.FINGERS[1:]) for a in openf)) == -45)
 sizes = [medidas.hand_image_size(r["img"], r["aspect"] or 1) for r in present]
 check("texto: tamanho da mão na imagem com mediana 0,27 (P10-P90 0,23-0,29)",
       round(np.median(sizes), 2) == 0.27 and round(np.percentile(sizes, 10), 2) == 0.23
       and round(np.percentile(sizes, 90), 2) == 0.29)
 
 # tabela da suavização no README (EMA + Kalman aplicada também nas medidas)
-from nucleo import filtros  # noqa: E402
+from manumetria.calculo import filtros  # noqa: E402
 smooth = analisar(rows, filtro=filtros.registro(filtros.CASCATA, nas_medidas=True)).results(rows[-1]["t"], "g")["dedos"]
 readme = open(os.path.join(ROOT, "README.md"), encoding="utf-8").read()
 missing = []
-for f in kin.FINGERS:
+for f in goniometria.FINGERS:
     a, b = out["dedos"][f], smooth[f]
     pa, pb = a["qualidade"]["peak_velocity"], b["qualidade"]["peak_velocity"]
-    line = (f"| {kin.NAME[f]} | {a['movimentos']} → {b['movimentos']} | {a['pct_normal'] * 100:.0f} → "
+    line = (f"| {goniometria.NAME[f]} | {a['movimentos']} → {b['movimentos']} | {a['pct_normal'] * 100:.0f} → "
             f"{b['pct_normal'] * 100:.0f} | {pa:.0f} → {pb:.0f} ({(pb / pa - 1) * 100:+.0f}%) |").replace("-", "−")
     if line not in readme:
         missing.append(line)
@@ -528,12 +531,12 @@ mcp = (out["dedos"]["index"]["articulacoes"][0]["max"], smooth["index"]["articul
 check("README: tabela da suavização e MCP do indicador conferidas na gravação", not missing
       and f"{mcp[0]:.1f}° para {mcp[1]:.1f}°".replace(".", ",") in readme, f"{missing} {mcp}")
 
-# afirmações retiradas por não terem evidência no repositório, ou que deixaram de valer na 1.2.0
-from app import glossario  # noqa: E402
-from app.telas import ajuda  # noqa: E402
-from app.dados import documento  # noqa: E402
-texts = (documento.METHOD_NOTE + ajuda.help_html() + " ".join(" ".join(t) for t in glossario.TERMS.values())
-         + " ".join(" ".join(r) for r in exportacao.SESSION_COLUMNS) + str(exportacao.FINGER_DESCRIPTIONS)
+# afirmações sem evidência no repositório, ou que não valem para o método de cálculo em uso
+from manumetria.interface import glossario  # noqa: E402
+from manumetria.interface.telas import ajuda  # noqa: E402
+from manumetria.relatorios import pdf  # noqa: E402
+texts = (pdf.METHOD_NOTE + ajuda.help_html() + " ".join(" ".join(t) for t in glossario.TERMS.values())
+         + " ".join(" ".join(r) for r in planilha.SESSION_COLUMNS) + str(planilha.FINGER_DESCRIPTIONS)
          + open(os.path.join(ROOT, "README.md"), encoding="utf-8").read())
 gone = ("entre 5° e 15°", "6° a 36°", "cerca de 1 mm de ruído", "abaixo de −3", "no plano do movimento",
         "10 a 23%", "10% a 23%", "média de 8 quadros e fica abaixo", "contam como 0° (erro de medida)",

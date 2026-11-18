@@ -1,5 +1,5 @@
 """
-Banco, gravação dos pontos e rastreabilidade (correções da 1.3.0). Tudo em pastas
+Banco, gravação dos pontos e rastreabilidade. Tudo em pastas
 temporárias: nada aqui toca em dados_locais.
 
     .venv\\Scripts\\python.exe tests\\test_banco.py
@@ -18,12 +18,12 @@ import numpy as np
 sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
-from app import versao  # noqa: E402
-from app.avaliador import Avaliador, analisar  # noqa: E402
-from app.dados import banco as banco_mod, exportacao, recalculo  # noqa: E402
-from app.dados import resultados as res  # noqa: E402
-from app.dados.banco import Banco  # noqa: E402
-from nucleo import caminhos, capture  # noqa: E402
+from manumetria import caminhos, versao  # noqa: E402
+from manumetria.avaliacao import resultados as res  # noqa: E402
+from manumetria.avaliacao.motor import Avaliador, analisar  # noqa: E402
+from manumetria.captura import gravacao  # noqa: E402
+from manumetria.dados import banco as banco_mod, planilha, recalculo  # noqa: E402
+from manumetria.dados.banco import Banco  # noqa: E402
 
 RECORDING = os.path.join(ROOT, "tests", "dados", "gravacao_referencia.npz")
 failures = []
@@ -35,7 +35,7 @@ def check(name, ok, detail=""):
         failures.append(name)
 
 
-# esquema como era até a 1.2.0 (sem versão, sem sexo nem id_pesquisa)
+# esquema 0 (sem versão, sem sexo nem id_pesquisa), para testar a migração
 OLD_SCHEMA = """
 CREATE TABLE pacientes (id INTEGER PRIMARY KEY AUTOINCREMENT, identificacao TEXT NOT NULL, nascimento TEXT,
     mao_dominante TEXT, mao_avaliada TEXT, condicao TEXT, data_lesao TEXT, profissional TEXT, observacoes TEXT,
@@ -45,7 +45,7 @@ CREATE TABLE sessoes (id INTEGER PRIMARY KEY AUTOINCREMENT,
     duracao_s INTEGER, mao TEXT, resultados TEXT NOT NULL, observacoes TEXT, criado_em TEXT NOT NULL);
 """
 
-rows = capture.load_recording(RECORDING)
+rows = gravacao.load_recording(RECORDING)
 out = analisar(rows).results(rows[-1]["t"], "gravação de teste")
 
 # ---------------------------------------------------------------- migração
@@ -104,7 +104,7 @@ with tempfile.TemporaryDirectory() as tmp:
           f"{by_day}")
     db.con.close()
 
-    db = Banco(path)                                  # de novo: nada muda, nenhuma cópia nova
+    db = Banco(path)                                  # de novo: nada muda, nenhuma outra cópia
     check("migração idempotente: códigos das avaliações iguais ao reabrir",
           {s["inicio"][:10]: s["codigo"] for s in db.sessoes(4)} == by_day)
     sid4 = db.salvar_sessao(4, dict(out, inicio="2026-04-01T10:00:00"))
@@ -149,7 +149,7 @@ check("caminho novo dos pontos é gravado com '/'", "\\" not in Avaliador().poin
 # ------------------------------------------------------- gravação atômica
 with tempfile.TemporaryDirectory() as tmp:
     target = os.path.join(tmp, "pontos", "a.npz")
-    capture.save_recording(target, rows[:50])
+    gravacao.save_recording(target, rows[:50])
     good = open(target, "rb").read()
     real = np.savez_compressed
 
@@ -158,7 +158,7 @@ with tempfile.TemporaryDirectory() as tmp:
         raise OSError("disco cheio (simulado)")
     np.savez_compressed = broken
     try:
-        capture.save_recording(target, rows)
+        gravacao.save_recording(target, rows)
         raised = False
     except OSError:
         raised = True
@@ -166,7 +166,7 @@ with tempfile.TemporaryDirectory() as tmp:
         np.savez_compressed = real
     check("pontos: falha no meio da gravação não estraga o arquivo anterior nem deixa temporário",
           raised and open(target, "rb").read() == good and os.listdir(os.path.dirname(target)) == ["a.npz"])
-    back = capture.load_recording(target)
+    back = gravacao.load_recording(target)
     check("pontos: gravação lida de volta igual (50 quadros)", len(back) == 50
           and np.allclose(back[10]["world"], np.asarray(rows[10]["world"], np.float32)))
 
@@ -182,7 +182,7 @@ with tempfile.TemporaryDirectory() as tmp:
 
         def writer(r):
             seen["rows_before"] = db.con.execute("SELECT COUNT(*) FROM sessoes").fetchone()[0]
-            capture.save_recording(caminhos.absoluto(r, tmp), rows[:30])
+            gravacao.save_recording(caminhos.absoluto(r, tmp), rows[:30])
         sid = db.salvar_sessao(pid, dict(out, pontos=rel), "", gravar_pontos=writer)
         check("salvar: pontos gravados antes da linha no banco", seen.get("rows_before") == 0
               and os.path.exists(caminhos.absoluto(rel, tmp)) and db.sessao(sid) is not None)
@@ -228,11 +228,11 @@ with tempfile.TemporaryDirectory() as tmp:
         pid = db.salvar_paciente({"identificacao": "Y", "nascimento": "1990-01-01"})
         db.salvar_sessao(pid, out)
         db.salvar_sessao(pid, old)
-        path, n = exportacao.export_research(db, os.path.join(tmp, "exp"))
+        path, n = planilha.export_research(db, os.path.join(tmp, "exp"))
         with open(path, encoding="utf-8-sig", newline="") as fh:
             table = list(csv.reader(fh, delimiter=";"))
-        before = ([c for c, _, _ in exportacao.SESSION_COLUMNS] + res.CSV_HEADER
-                  + [c for c, _, _ in exportacao.RETEST_COLUMNS])
+        before = ([c for c, _, _ in planilha.SESSION_COLUMNS] + planilha.CSV_HEADER
+                  + [c for c, _, _ in planilha.RETEST_COLUMNS])
         head = table[0]
         check("planilha: colunas anteriores na mesma ordem; versão e método no fim",
               head[:len(before)] == before and head[len(before):] == ["versao_calculo", "metodo_goniometria"])

@@ -1,5 +1,5 @@
 """
-Testes das medidas novas (velocidade de pico, suavidade, fadiga, Strickland,
+Testes das medidas do movimento e da mão inteira (velocidade de pico, suavidade, fadiga, Strickland,
 arco funcional, polpa-palma, abertura, tremor, confiabilidade) e da
 interpretação (erro de medida por reteste, mudança real, tendência).
 Também passa uma gravação real pelo motor (tests/dados/gravacao_referencia.npz, mão
@@ -18,13 +18,10 @@ import types
 import numpy as np
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-import app.simulacao as sim  # noqa: E402
-from app.avaliador import Avaliador, analisar  # noqa: E402
-from app.dados import interpretacao as interp  # noqa: E402
-from nucleo import capture  # noqa: E402
-from nucleo import geometria  # noqa: E402
-from nucleo import kinematics as kin  # noqa: E402
-from nucleo import medidas  # noqa: E402
+from manumetria.avaliacao import interpretacao as interp  # noqa: E402
+from manumetria.avaliacao.motor import Avaliador, analisar  # noqa: E402
+from manumetria.calculo import geometria, goniometria, medidas, repeticoes, sessao, sinal  # noqa: E402
+from manumetria.captura import gravacao, simulacao as sim  # noqa: E402
 
 FPS = 30
 rng = np.random.default_rng(3)
@@ -43,25 +40,25 @@ def world(flex, thumb, noise=0.00015):
 
 def run_session(amplitudes, low=5.0, period=2.2, noise=0.00015):
     """Uma repetição por amplitude (PIP do indicador, em graus), em cosseno."""
-    s = kin.Session({f: 5.0 for f in kin.FINGERS})
+    s = sessao.Session({f: 5.0 for f in goniometria.FINGERS})
     t = 0.0
     n = int(period * FPS)
     for peak in amplitudes:
         for k in range(n):
             w = (1 - np.cos(2 * np.pi * k / n)) / 2
             flex = [low + (peak - low) * w] * 4
-            s.update(kin.joint_angles(world(flex, low, noise), "Right"), t)
+            s.update(goniometria.joint_angles(world(flex, low, noise), "Right"), t)
             t += 1 / FPS
     return s, t
 
 
 # ---------------------------------------------------------------- sinal
 x = np.linspace(0, 10, 50)
-check("derivada de uma reta é exata", np.allclose(kin.derivative(3 * x, fs=1 / (x[1] - x[0])), 3))
+check("derivada de uma reta é exata", np.allclose(sinal.derivative(3 * x, fs=1 / (x[1] - x[0])), 3))
 tt = np.linspace(0, 1, 31)
 bell = 30 * tt ** 2 - 60 * tt ** 3 + 30 * tt ** 4           # velocidade de mínimo jerk
 jerky = bell * (1 + 0.6 * np.sin(2 * np.pi * 4 * tt))
-s_bell, s_jerky = kin.sparc(bell), kin.sparc(np.abs(jerky))
+s_bell, s_jerky = sinal.sparc(bell), sinal.sparc(np.abs(jerky))
 check("SPARC: movimento em sino é mais suave que com trancos", s_bell > s_jerky,
       f"sino {s_bell:.2f}, trancos {s_jerky:.2f}")
 check("SPARC do sino perto de -1,4", -1.8 < s_bell < -1.2, f"{s_bell:.2f}")
@@ -107,7 +104,7 @@ check("repetições fortes: só as perto do melhor fechamento", s.trackers["inde
       f"{s.trackers['index'].strong_reps()}")
 s, _ = run_session([40] * 6)                 # pouca amplitude, mas sempre igual
 check("repetições fortes não dependem do normal (paciente limitado chega à meta)",
-      s.trackers["index"].strong_reps() >= kin.EFFORT_TOP_REPS, f"{s.trackers['index'].strong_reps()}")
+      s.trackers["index"].strong_reps() >= repeticoes.EFFORT_TOP_REPS, f"{s.trackers['index'].strong_reps()}")
 
 # ------------------------------------------------ distância da câmera
 hand = lambda size: {"img": np.array([[0.5, 0.5]] * 9 + [[0.5, 0.5 - size]] + [[0.5, 0.5]] * 11), "aspect": 4 / 3}
@@ -117,7 +114,7 @@ check("mão longe: avisa só depois de meio segundo", far[-2] is None and far[-1
 check("mão de volta à distância certa: aviso some na hora", dc.update(hand(0.28)) is None)
 check("um quadro só muito perto não avisa", dc.update(hand(0.6)) is None)
 dc = medidas.DistanceCheck()
-reference = capture.load_recording(os.path.join(os.path.dirname(__file__), "dados", "gravacao_referencia.npz"))
+reference = gravacao.load_recording(os.path.join(os.path.dirname(__file__), "dados", "gravacao_referencia.npz"))
 warned = sum(dc.update(r) is not None for r in reference)
 check("gravação real a ~50 cm: nenhum aviso de distância", warned == 0, f"{warned} quadros com aviso")
 
@@ -134,7 +131,7 @@ check("arco funcional completo", medidas.functional_coverage("ring", "DIP", 0, 8
 hm = medidas.HandMeasures()
 for flex in (5, 40, 80, 110):
     w = world([flex] * 4, 5, 0)
-    hm.add(w, kin.joint_angles(w, "Right"))
+    hm.add(w, goniometria.joint_angles(w, "Right"))
 r = hm.results()
 open_d = medidas.tip_to_palm_cm(world([5] * 4, 5, 0))
 check("polpa-palma diminui ao fechar", all(r["polpa_palma_cm"][f] < open_d[f] for f in medidas.TIPS),
@@ -149,7 +146,7 @@ def tremor_run(freq, amp_m, slow_flex=0.0):
         flex = 5 + slow_flex * (1 - np.cos(2 * np.pi * 0.35 * t)) / 2   # movimento voluntário lento
         w = world([flex] * 4, 5)
         w[[4, 8, 12, 16, 20], 0] += amp_m * np.sin(2 * np.pi * freq * t)
-        tm.add(t, w, kin.joint_angles(w, "Right"))
+        tm.add(t, w, goniometria.joint_angles(w, "Right"))
     return tm.result()
 
 
@@ -174,7 +171,7 @@ check("confiabilidade baixa com metade dos quadros e pouca luz", bad["nivel"] ==
 # ---------------------------------------------- erro de medida por reteste
 def fake(pct, joint_vals):
     d = {f: {"pct_normal": pct, "articulacoes": [{"nome": n, "min": joint_vals[0], "max": joint_vals[1]}
-                                                for n, _ in kin.JOINTS[f]]} for f in kin.FINGERS}
+                                                for n, _ in goniometria.JOINTS[f]]} for f in goniometria.FINGERS}
     return {"dedos": d}
 
 
@@ -195,7 +192,7 @@ check("mudança real só acima do MDC", interp.change(8, 5) == "melhora" and int
 
 def ses(day, pct):
     iso = (datetime.date(2026, 9, 1) + datetime.timedelta(days=day)).isoformat() + "T14:00:00"
-    return {"inicio": iso, "resultados": {"dedos": {f: {"pct_normal": pct} for f in kin.FINGERS}}}
+    return {"inicio": iso, "resultados": {"dedos": {f: {"pct_normal": pct} for f in goniometria.FINGERS}}}
 
 
 up = [ses(7 * k, 0.30 + 0.05 * k) for k in range(5)]
@@ -228,8 +225,8 @@ for _ in range(30 * FPS):
     live.step(raw, raw["t"])
     clock[0] += 1 / FPS
 with tempfile.TemporaryDirectory() as tmp:
-    capture.save_recording(os.path.join(tmp, "p.npz"), live.frames)
-    rows = capture.load_recording(os.path.join(tmp, "p.npz"))
+    gravacao.save_recording(os.path.join(tmp, "p.npz"), live.frames)
+    rows = gravacao.load_recording(os.path.join(tmp, "p.npz"))
 check("pontos gravados: valor ausente volta como ausente", rows[-1]["brightness"] is None and rows[-1]["fps"] is None)
 same = lambda res: {k: res[k] for k in ("dedos", "mao_inteira", "confiabilidade")}
 check("recalcular a partir dos pontos gravados reproduz a avaliação ao vivo",
@@ -238,7 +235,7 @@ check("recalcular a partir dos pontos gravados reproduz a avaliação ao vivo",
 # -------------------------------------------- gravação real (se informada)
 RECORDING = sys.argv[1] if len(sys.argv) > 1 else os.path.join(os.path.dirname(__file__), "dados", "gravacao_referencia.npz")
 if os.path.exists(RECORDING):
-    rows = capture.load_recording(RECORDING)
+    rows = gravacao.load_recording(RECORDING)
     av = analisar(rows)                        # o mesmo motor da tela de avaliação
     res = av.results(rows[-1]["t"], "gravação")
     rel = res["confiabilidade"]
@@ -247,11 +244,11 @@ if os.path.exists(RECORDING):
         return "--" if v is None else f"{v * scale:.{decimals}f}"
 
     print(f"\nGravação {os.path.basename(RECORDING)} (mão {res['mao']}, calibração {res['calibracao']}):")
-    for f in kin.FINGERS:
+    for f in goniometria.FINGERS:
         d = res["dedos"][f]
         qq = d["qualidade"]
         cov = " ".join(f"{j['nome']} {fmt(j['arco_funcional'], 0, 100)}%" for j in d["articulacoes"])
-        print(f"  {kin.SHORT[f]}: {d['movimentos']:2d} mov | TAM {fmt(d['pct_normal'], 0, 100)}% | "
+        print(f"  {goniometria.SHORT[f]}: {d['movimentos']:2d} mov | TAM {fmt(d['pct_normal'], 0, 100)}% | "
               f"Strickland {fmt(d['strickland'], 0, 100)}% | polpa-palma {fmt(d['polpa_palma_cm'], 1)} cm | "
               f"pico {fmt(qq['peak_velocity'])}°/s | SPARC {fmt(qq['sparc'], 2)} | "
               f"tend. amp {fmt(qq['amp_trend'], 0, 100)}% vel {fmt(qq['vel_trend'], 0, 100)}% | "

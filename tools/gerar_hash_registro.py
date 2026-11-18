@@ -33,17 +33,19 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT_DIR = os.path.join(os.path.dirname(ROOT), "REGISTRO_INPI")
 NAME = "manumetria"
 
-# nunca entram no pacote (pastas em qualquer nível e padrões de arquivo)
-EXCLUDED_DIRS = {".git", ".venv", "venv", "__pycache__", "dados_locais", "relatorios", "gravacoes",
-                 "copias_de_seguranca", ".vscode", ".idea", ".claude", "REGISTRO_INPI"}
-EXCLUDED_FILES = ["*.pyc", "*.sqlite", "*.sqlite-journal", "hand_landmarker.task", "Thumbs.db",
+# nunca entram no pacote: pastas em qualquer nível, pastas de dados do usuário na raiz do projeto
+# (manumetria/relatorios/ é código e entra) e padrões de arquivo
+EXCLUDED_DIRS = {".git", ".venv", "venv", "__pycache__", "copias_de_seguranca", ".vscode", ".idea", ".claude"}
+EXCLUDED_ROOT_DIRS = {"dados_locais", "relatorios", "gravacoes", "REGISTRO_INPI"}
+EXCLUDED_FILES = ["*.pyc", "*.sqlite", "*.sqlite-journal", "hand_landmarker.task", "*.gravando", "Thumbs.db",
                   "desktop.ini", ".DS_Store", "*.zip"]
 ZIP_DATE = (2026, 1, 1, 0, 0, 0)               # data fixa dentro do ZIP (reprodutível)
 
 
 def excluded(rel):
+    """True se o arquivo fica fora do pacote (pasta ou nome excluídos)."""
     parts = rel.replace("\\", "/").split("/")
-    if any(p in EXCLUDED_DIRS for p in parts[:-1]):
+    if any(p in EXCLUDED_DIRS for p in parts[:-1]) or (len(parts) > 1 and parts[0] in EXCLUDED_ROOT_DIRS):
         return True
     return any(fnmatch.fnmatch(parts[-1], pat) for pat in EXCLUDED_FILES)
 
@@ -57,7 +59,8 @@ def list_files():
     except (OSError, subprocess.CalledProcessError):
         files = []
         for base, dirs, names in os.walk(ROOT):
-            dirs[:] = [d for d in dirs if d not in EXCLUDED_DIRS]
+            dirs[:] = [d for d in dirs if d not in EXCLUDED_DIRS
+                       and not (base == ROOT and d in EXCLUDED_ROOT_DIRS)]
             files += [os.path.relpath(os.path.join(base, n), ROOT) for n in names]
         source = "pasta do projeto"
     files = sorted({f.replace("\\", "/") for f in files
@@ -66,6 +69,7 @@ def list_files():
 
 
 def sha(path, algo):
+    """Hash do arquivo com o algoritmo `algo`, lido em blocos de 1 MB."""
     h = hashlib.new(algo)
     with open(path, "rb") as fh:
         for block in iter(lambda: fh.read(1 << 20), b""):
@@ -74,6 +78,7 @@ def sha(path, algo):
 
 
 def main():
+    """Gera o ZIP e o arquivo com os hashes em REGISTRO_INPI. Devolve o código de saída."""
     files, source = list_files()
     if not files:
         print("Nenhum arquivo encontrado para o pacote.")

@@ -1,6 +1,6 @@
 """
 Analisa um arquivo de pontos (dados_locais/pontos/*.npz ou tests/dados/gravacao_referencia.npz)
-passando-o pelo mesmo motor da tela de avaliação (app/avaliador.py):
+passando-o pelo mesmo motor da tela de avaliação (manumetria/avaliacao/motor.py):
 
   1) captura: quadros, fps, brilho, quanto a mão foi detectada, falhas
   2) linha do tempo a cada 5 s: fase, mão detectada, movimento, vista da palma
@@ -22,11 +22,10 @@ import sys
 import numpy as np
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from app.avaliador import Avaliador  # noqa: E402
-from app.dados import config as cfgmod  # noqa: E402
-from nucleo import capture  # noqa: E402
-from nucleo import filtros  # noqa: E402
-from nucleo import kinematics as kin  # noqa: E402
+from manumetria.avaliacao.motor import Avaliador  # noqa: E402
+from manumetria.calculo import filtros, goniometria  # noqa: E402
+from manumetria.captura import gravacao  # noqa: E402
+from manumetria.dados import configuracoes as cfgmod  # noqa: E402
 
 args = sys.argv[1:]
 cfg = cfgmod.load()
@@ -42,7 +41,7 @@ if "--filtro" in args:
 if not args or mode not in filtros.MODOS:
     sys.exit(__doc__)
 sys.argv[1:] = args
-rows = capture.load_recording(sys.argv[1])
+rows = gravacao.load_recording(sys.argv[1])
 t = np.array([r["t"] for r in rows])
 t0, dur = t[0], t[-1] - t[0]
 present = np.array([r["world"] is not None for r in rows])
@@ -65,16 +64,16 @@ print(f"  falhas de detecção: {len(gaps)} | até 0,4 s: {sum(g <= 0.4 for g in
 av = Avaliador(filtro=mode, nas_medidas=in_measures)
 print(f"  suavização: {filtros.MODOS[mode]} " + ("(também nas medidas)" if av.filter_measures
                                                   else "(só na exibição; medidas com os dados brutos)"))
-timeline = []                  # (t, fase, estado, TAM dos dedos ou None, vista ou None, repetições novas)
+timeline = []                  # (t, fase, estado, TAM dos dedos ou None, vista ou None, repetições fechadas no quadro)
 for r in rows:
     before = sum(len(tr.reps) for tr in av.session.trackers.values())
     phase = av.phase
     passo = av.step(r, r["t"])
     tams = view = None
     if passo.state == "ok":
-        a = kin.joint_angles(r["world"], av.stab.hand)
-        tams = np.array([a[f].sum() for f in kin.FINGERS])
-        view = kin.view_angle(r["world"], av.stab.hand)
+        a = goniometria.joint_angles(r["world"], av.stab.hand)
+        tams = np.array([a[f].sum() for f in goniometria.FINGERS])
+        view = goniometria.view_angle(r["world"], av.stab.hand)
     after = sum(len(tr.reps) for tr in av.session.trackers.values())
     timeline.append((r["t"] - t0, phase, passo.state, tams, view, after - before))
 
@@ -118,8 +117,8 @@ for a, b in segments:
 res = av.results(rows[-1]["t"], "gravação")
 print(f"\nResultado ({res['calibracao']} | confiabilidade {res['confiabilidade']['nivel']} "
       f"{res['confiabilidade']['motivos']}):")
-for f in kin.FINGERS:
+for f in goniometria.FINGERS:
     d = res["dedos"][f]
     pct = "--" if d["pct_normal"] is None else f"{d['pct_normal'] * 100:.0f}%"
-    print(f"  {kin.NAME[f]:9s} {d['movimentos']:3d} movimentos | TAM ativo {pct:>5s} | "
+    print(f"  {goniometria.NAME[f]:9s} {d['movimentos']:3d} movimentos | TAM ativo {pct:>5s} | "
           f"sensibilidade {d['sensibilidade']:.0f}°")

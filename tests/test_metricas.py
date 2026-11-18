@@ -1,5 +1,5 @@
 """
-Testes das métricas por dedo do kinematics.py (sem câmera, sem interface):
+Testes das métricas por dedo (calculo/repeticoes.py) (sem câmera, sem interface):
 sinal dos ângulos, déficit de extensão, arco, velocidade, ciclo, cadência,
 regularidade, variação de amplitude, independência e contribuição.
 
@@ -12,8 +12,7 @@ import sys
 import numpy as np
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from nucleo import geometria  # noqa: E402
-from nucleo import kinematics as kin  # noqa: E402
+from manumetria.calculo import geometria, goniometria, sessao  # noqa: E402
 
 FPS = 30
 NOISE_M = 0.00015              # ~1° de tremor no TAM, como na webcam real
@@ -35,20 +34,20 @@ def hand(fingers, thumb, mirror=False, noise=NOISE_M):
 
 
 # --- 1) sinal e plano da flexão ---------------------------------------------
-a = kin.joint_angles(hand([30] * 4, 30, noise=0), "Right")
-check("flexão de 30° (PIP) dá ângulos positivos", all((a[f] > 0).all() for f in kin.FINGERS),
+a = goniometria.joint_angles(hand([30] * 4, 30, noise=0), "Right")
+check("flexão de 30° (PIP) dá ângulos positivos", all((a[f] > 0).all() for f in goniometria.FINGERS),
       f"(indicador MCP/PIP/DIP = {np.round(a['index'], 1)})")
 check("PIP do indicador mede a flexão aplicada", abs(a["index"][1] - 30) < 0.5)
 # A mão sintética dobra a MCP em torno do eixo x da imagem; a decomposição por osso (ISB) mede em
 # torno do eixo lateral do metacarpo (linha punho -> base, ~15° oblíqua ao dedo nesse modelo): < 1°.
 check("MCP do indicador = 0,6 x flexão (sem o desvio lateral)", abs(a["index"][0] - 18) < 1.0)
-a = kin.joint_angles(hand([-15] * 4, -15, noise=0), "Right")
-check("hiperextensão dá ângulos negativos", all((a[f] < 0).all() for f in kin.FINGERS),
+a = goniometria.joint_angles(hand([-15] * 4, -15, noise=0), "Right")
+check("hiperextensão dá ângulos negativos", all((a[f] < 0).all() for f in goniometria.FINGERS),
       f"(indicador = {np.round(a['index'], 1)})")
-a = kin.joint_angles(hand([30] * 4, 30, mirror=True, noise=0), "Left")
+a = goniometria.joint_angles(hand([30] * 4, 30, mirror=True, noise=0), "Left")
 check("mão do outro lado (espelhada) também dá flexão positiva",
-      all((a[f] > 0).all() for f in kin.FINGERS))
-a0 = kin.joint_angles(hand([0] * 4, 0, noise=0), "Right")
+      all((a[f] > 0).all() for f in goniometria.FINGERS))
+a0 = goniometria.joint_angles(hand([0] * 4, 0, noise=0), "Right")
 check("dedo esticado ~0° (o desvio lateral da base não entra)",
       np.abs(np.concatenate(list(a0.values()))).max() < 0.5,
       f"(maior = {np.abs(np.concatenate(list(a0.values()))).max():.2f}°)")
@@ -57,20 +56,20 @@ check("dedo esticado ~0° (o desvio lateral da base não entra)",
 # --- sessão com ciclos controlados -------------------------------------------
 def run(cycles, only_index=False, period=2.0, low=20.0):
     """cycles = flexão PIP de pico de cada ciclo; o dedo não estende abaixo de `low`."""
-    cal = kin.Calibration()
+    cal = sessao.Calibration()
     while not cal.done():
-        cal.add(kin.joint_angles(hand([low] * 4, low), "Right"))
-    s = kin.Session(cal.sensitivity())
+        cal.add(goniometria.joint_angles(hand([low] * 4, low), "Right"))
+    s = sessao.Session(cal.sensitivity())
     t = 0.0
     for peak in cycles:
         n = int(period * FPS)
         for k in range(n):
             x = low + (peak - low) * (1 - np.cos(2 * np.pi * k / n)) / 2
             fingers = [x, low, low, low] if only_index else [x] * 4
-            s.update(kin.joint_angles(hand(fingers, low), "Right"), t)
+            s.update(goniometria.joint_angles(hand(fingers, low), "Right"), t)
             t += 1 / FPS
     for _ in range(FPS):
-        s.update(kin.joint_angles(hand([low] * 4, low), "Right"), t)
+        s.update(goniometria.joint_angles(hand([low] * 4, low), "Right"), t)
         t += 1 / FPS
     return s
 
@@ -101,14 +100,14 @@ check("contribuição MCP/PIP/DIP ~ 26/43/30%", np.abs(c - np.array([0.6, 1, 0.7
 cp = tr.coupling()
 check("dedos longos juntos -> acoplados ~100%; polegar parado ~0%",
       min(cp["middle"], cp["ring"], cp["pinky"]) > 0.8 and cp["thumb"] < 0.1,
-      f"({', '.join(f'{kin.SHORT[g]} {v * 100:.0f}%' for g, v in cp.items())};"
+      f"({', '.join(f'{goniometria.SHORT[g]} {v * 100:.0f}%' for g, v in cp.items())};"
       f" independência {tr.independence() * 100:.0f}%)")
 
 s = run([60] * 8, only_index=True)
 tr = s.trackers["index"]
 check("só o indicador mexendo -> independência alta", tr.independence() > 0.8,
       f"({tr.independence() * 100:.0f}%; outros: "
-      + ", ".join(f"{kin.SHORT[g]} {v * 100:.0f}%" for g, v in tr.coupling().items()) + ")")
+      + ", ".join(f"{goniometria.SHORT[g]} {v * 100:.0f}%" for g, v in tr.coupling().items()) + ")")
 
 s = run([90, 85, 80, 70, 60, 50, 45, 40])
 q = s.trackers["index"].quality()

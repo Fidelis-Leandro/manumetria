@@ -53,6 +53,9 @@ O passo a passo manual (e a solução dos problemas mais comuns) está em [INSTA
    miniatura, ou nos botões *Câmera* / *Modelo 3D*, para trocar). Na mão 3D, cada esfera de articulação tem a cor do seu dedo, conforme o % do normal do TAM ativo na
    sessão: vermelho abaixo de 50%, amarelo de 50% até abaixo de 75% e verde a partir de 75% (cinza enquanto não há
    medidas). Arraste para girar e passe o mouse sobre uma articulação para ver o nome e os valores dela.
+
+   ![Mão 3D da tela de avaliação: cada esfera é uma articulação medida, na cor do % do normal do dedo](docs/mao3d_procedural_vista.png)
+
 7. Clique em **Encerrar sessão**. No relatório, escreva as observações, faça o **reteste** quando indicado e
    **salve na ficha**. Depois, gere o **PDF** ou o **CSV**.
 8. A **ficha** mostra a evolução (gráfico, mapa, comparação entre avaliações). A tela **Ajuda** explica cada
@@ -191,9 +194,12 @@ Cada medida tem um teste automático de **resposta conhecida** (`tests\test_audi
 | Erro de medida (MDC), mudança real, tendência, platô | pares teste–reteste com o MDC calculado à mão (1,96 × desvio das diferenças), +5 pp por semana |
 | Tela, banco, CSV e recálculo | na gravação de referência: o salvo é o que a tela mostra, o CSV converte as unidades certas, o dicionário cobre todas as colunas e "Recalcular avaliações" num banco temporário reproduz o resultado |
 | Banco e gravação (`tests\test_banco.py`) | migração com cópia de segurança e idempotente, código fixo da avaliação (apagar a A02 não muda a A03), pontos gravados antes da linha no banco e de forma atômica, exclusão sem deixar avaliação apontando para arquivo apagado, versão e método registrados |
+| Pastas do banco e logotipo (`tests\test_pastas.py`) | banco padrão em `dados_locais/`; com outro banco, pontos em `pontos/` ao lado dele e caminho relativo à pasta dele (a pasta pode ir para outro disco); demonstração em outro banco; logotipo escolhido copiado para `dados_locais/`; `dados_locais` com o mesmo SHA-256 no fim |
 | Dataset para pesquisa (`tests\test_dataset.py`) | releitura com o pandas (ou o módulo csv), IDs ligando todos os arquivos, medidas de `dedos.csv` refeitas a partir de `quadros` (tolerância 0,001°), nenhum nome nem data de nascimento nos arquivos, idade conferida à mão, checksums, dicionário com 100% das colunas, mesmos bytes ao exportar de novo |
 | Números citados nos textos | conferidos na gravação de referência (quadros descartados, tremor parado, tamanho da mão na imagem, tabela dos filtros) |
 | Checagem clínica | a mão saudável da gravação de referência não recebe nenhuma limitação |
+| Números da gravação de referência (`tests\test_reorganizacao.py`) | o resultado completo (todas as medidas de todos os dedos, com a suavização padrão e com EMA + Kalman nas medidas) é idêntico ao guardado em `tests/dados/referencia_resultados.json` |
+| Camadas do código (`tests\test_arquitetura.py`) | nenhuma camada importa uma camada posterior (veja [docs/ARQUITETURA.md](docs/ARQUITETURA.md)) |
 
 ### Dados e exportação para pesquisa
 
@@ -209,7 +215,16 @@ acrescenta (nenhuma medida muda). A versão 1.3.0 acrescentou o sexo do paciente
 (`id_pesquisa`, aleatório) e o **código fixo de cada avaliação** no paciente (A01, A02...: atribuído ao
 salvar e nunca renumerado; apagar uma avaliação deixa um buraco). Os pontos da mão são gravados antes da
 avaliação entrar no banco, num arquivo temporário trocado pelo definitivo no fim: se o programa fechar no
-meio, nenhuma avaliação fica apontando para um arquivo incompleto.
+meio, nenhuma avaliação fica apontando para um arquivo incompleto. Com outro banco
+(`sistema.py --banco outro.sqlite`), os pontos ficam em `pontos/` ao lado desse banco, com o caminho
+relativo à pasta dele.
+
+**Horário e duração.** O horário de cada avaliação marca o início da sessão (quando a preparação começa,
+antes da calibração); a duração conta só a medição, sem a preparação, a calibração, as recalibrações e as
+pausas.
+
+**Logotipo.** O logotipo escolhido em Configurações é copiado para `dados_locais/`; o padrão, em
+`manumetria/recursos/`, não é alterado.
 
 **Rastreabilidade.** Desde a 1.3.0, cada avaliação guarda a versão do ManuMetria que calculou as medidas,
 o método dos ângulos e o fuso do horário. "Recalcular avaliações" registra a versão atual. O relatório, o
@@ -247,16 +262,19 @@ Para recriar os pacientes fictícios: `.venv\Scripts\python.exe tools\criar_demo
 
 ```
 sistema.py               ponto de entrada (python sistema.py --help mostra as opções)
-nucleo/                  cálculo, sem interface (numpy): câmera, cinemática, medidas, estabilizador, filtros
-app/                     interface (PyQt5): janela, telas, componentes, mão 3D, banco e relatórios
-  telas/                 uma tela por arquivo (pacientes, ficha, avaliação, relatório, configurações, ajuda)
-  componentes/           partes das telas (palco 3D, mão 3D procedural em mao3d.py, painéis, gráficos)
-  dados/                 banco SQLite, configurações, resultados, interpretação, PDF, planilha e dataset de pesquisa
-assets/                  logotipo padrão do relatório
+manumetria/              o sistema, em camadas (docs/ARQUITETURA.md)
+  calculo/               cálculo puro (numpy): goniometria, sinal, repetições, sessão, medidas, filtros, estabilizador
+  captura/               webcam e MediaPipe, arquivos de pontos, mão simulada, qualidade da captura
+  avaliacao/             motor da avaliação, formato dos resultados, interpretação clínica
+  dados/                 banco SQLite, configurações, recálculo, planilha e dataset de pesquisa
+  relatorios/            relatório da avaliação (prévia e PDF)
+  interface/             janela, telas, componentes (palco, mão 3D, painéis, gráficos), tema, ícones, glossário
+  recursos/              logotipo padrão do relatório e o modelo do MediaPipe (baixado na instalação)
+  caminhos.py, versao.py, formato.py   pastas do projeto, versão e formatação (usados por todas as camadas)
 tests/                   testes automáticos (tests\testar.py roda todos)
 requirements-dev.txt     só para os testes (pandas); não é preciso para usar o sistema
-tools/                   pacientes de demonstração e análise de gravações
-docs/                    imagens da documentação
+tools/                   pacientes de demonstração, análise de gravações e pacote para o registro
+docs/                    arquitetura, auditorias e imagens da documentação
 Instalar sistema.bat     instalação completa no Windows
 Abrir sistema.bat        abre com a webcam
 Abrir simulacao.bat      abre com a mão simulada

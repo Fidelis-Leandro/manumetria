@@ -18,34 +18,35 @@ import sys
 import pyqtgraph as pg
 from PyQt5 import QtWidgets, sip
 
-from app.dados import config as cfgmod
-from app.janela import AppWindow
-from app.simulacao import DemoHand
-from nucleo import capture
+from manumetria.captura import camera, gravacao
+from manumetria.captura.simulacao import DemoHand
+from manumetria.dados import configuracoes as cfgmod
+from manumetria.interface.janela import AppWindow
 
 
 def make_source_factory(args):
-    """Cria uma fonte nova a cada avaliação: câmera, simulação ou arquivo de pontos."""
+    """Cria uma fonte de quadros para cada avaliação: câmera, simulação ou arquivo de pontos."""
     def factory():
         if args.replay:
-            return capture.ReplaySource(args.replay, loop=False), f"gravação {args.replay}"
+            return gravacao.ReplaySource(args.replay, loop=False), f"gravação {args.replay}"
         if args.sim:
             return DemoHand(), "simulação"
         w, h = (int(v) for v in args.resolucao.lower().split("x"))
-        source = capture.CameraSource(args.cam, w, h, detection=args.confianca,
-                                      presence=args.confianca, tracking=args.confianca)
+        source = camera.CameraSource(args.cam, w, h, detection=args.confianca,
+                                     presence=args.confianca, tracking=args.confianca)
         return source, f"câmera {args.cam}"
     return factory
 
 
 def main():
+    """Lê as opções da linha de comando e abre a janela principal."""
     parser = argparse.ArgumentParser(description="ManuMetria - avaliação cinemática da mão por visão computacional")
     parser.add_argument("--sim", action="store_true", help="usar a mão simulada")
     parser.add_argument("--cam", type=int, default=0, help="índice da webcam (padrão 0)")
     parser.add_argument("--replay", metavar="ARQUIVO",
                         help="tocar um arquivo de pontos (.npz, ex.: dados_locais/pontos/...)")
     parser.add_argument("--resolucao", default="640x480", help="resolução da câmera, ex.: 1280x720")
-    parser.add_argument("--confianca", type=float, default=capture.DETECTION_CONFIDENCE,
+    parser.add_argument("--confianca", type=float, default=camera.DETECTION_CONFIDENCE,
                         help="limiar do MediaPipe 0..1 (padrão 0.5; menor = insiste mais na mão)")
     parser.add_argument("--banco", metavar="ARQUIVO", help="outro arquivo de banco (SQLite)")
     args = parser.parse_args()

@@ -75,10 +75,10 @@ Esperado: termina sem `ERROR`. São cerca de 300 MB (mediapipe, opencv, PyQt5). 
 ### 4. Baixar o modelo de detecção da mão (MediaPipe)
 
 ```powershell
-.venv\Scripts\python.exe -c "from nucleo import capture; capture.ensure_model()"
+.venv\Scripts\python.exe -c "from manumetria.captura import camera; camera.ensure_model()"
 ```
 
-Esperado: aparece o arquivo `hand_landmarker.task` (cerca de 7,8 MB) na pasta do projeto.
+Esperado: aparece o arquivo `hand_landmarker.task` (cerca de 7,8 MB) em `manumetria\recursos\`.
 
 ### 5. Rodar os testes automáticos
 
@@ -86,7 +86,7 @@ Esperado: aparece o arquivo `hand_landmarker.task` (cerca de 7,8 MB) na pasta do
 .venv\Scripts\python.exe tests\testar.py
 ```
 
-Esperado: cinco linhas `ok` e `Todos os testes passaram.`
+Esperado: uma linha `ok` por arquivo de teste (12) e `Todos os testes passaram.` (cerca de 1 minuto).
 
 ### 6. Criar os pacientes fictícios de demonstração
 
@@ -122,14 +122,15 @@ README.md.
 | O `.bat` abre e fecha, ou a janela não aparece | Rode pelo terminal para ver a mensagem: `.venv\Scripts\python.exe sistema.py --sim`. |
 | `não consegui abrir a câmera 0` | Outra câmera: `sistema.py --cam 1`. Feche outros programas que usam a câmera (Teams, Zoom). Verifique a permissão de câmera do Windows (Configurações > Privacidade > Câmera). |
 | Erro de OpenGL / tela 3D preta | Atualize o driver de vídeo (é preciso OpenGL 2.0 ou superior). |
-| Download do `hand_landmarker.task` falha | Baixe manualmente de `https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/latest/hand_landmarker.task` e coloque na pasta do projeto. |
+| Download do `hand_landmarker.task` falha | Baixe manualmente de `https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/latest/hand_landmarker.task` e coloque em `manumetria\recursos\`. |
 | A interface aparece muito pequena ou grande | Em Configurações > Interface > Tamanho (vale ao reiniciar). |
 
 ## Estrutura (resumo)
 
-- `sistema.py`: ponto de entrada. `nucleo/`: cálculo sem interface (`kinematics.py`, `medidas.py`), câmera
-  (`capture.py`) e os caminhos do projeto (`caminhos.py`). `app/`: telas, motor da avaliação, dados, mão 3D
-  procedural (`app/componentes/mao3d.py`).
+- `sistema.py`: ponto de entrada. `manumetria/`: o sistema, em camadas: `calculo/` (cálculo puro),
+  `captura/` (câmera e arquivos de pontos), `avaliacao/` (motor da avaliação), `dados/` (banco, planilha,
+  dataset), `relatorios/` (PDF), `interface/` (telas) e `recursos/` (logotipo padrão e o modelo do
+  MediaPipe). Detalhes em `docs/ARQUITETURA.md`.
 - `tests/`: testes automáticos. `tools/`: demonstração, análise de gravações e o gerador do pacote para o
   registro de software (`gerar_hash_registro.py`).
 - Detalhes para manutenção: `DESENVOLVIMENTO.md`.

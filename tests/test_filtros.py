@@ -1,6 +1,6 @@
 """
-Testes da suavização do sinal (nucleo/filtros.py) e do seu uso no motor da
-avaliação (app/avaliador.py): EMA, Kalman e a cascata EMA -> Kalman com os
+Testes da suavização do sinal (manumetria/calculo/filtros.py) e do seu uso no motor da
+avaliação (manumetria/avaliacao/motor.py): EMA, Kalman e a cascata EMA -> Kalman com os
 parâmetros do artigo EMA × Kalman (ERAMIA-RS 2026).
 
     .venv\\Scripts\\python.exe tests\\test_filtros.py
@@ -13,11 +13,11 @@ import tempfile
 import numpy as np
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from app.avaliador import Avaliador, analisar  # noqa: E402
-from app.dados import recalculo  # noqa: E402
-from app.dados.resultados import smoothing_text  # noqa: E402
-from nucleo import capture, filtros, geometria  # noqa: E402
-from nucleo import kinematics as kin  # noqa: E402
+from manumetria.avaliacao.motor import Avaliador, analisar  # noqa: E402
+from manumetria.avaliacao.resultados import smoothing_text  # noqa: E402
+from manumetria.calculo import filtros, geometria, goniometria  # noqa: E402
+from manumetria.captura import gravacao  # noqa: E402
+from manumetria.dados import recalculo  # noqa: E402
 
 FPS = 30
 MODES = list(filtros.MODOS)
@@ -180,8 +180,8 @@ def live(mode, in_measures=False):
 
 def saved(av):
     with tempfile.TemporaryDirectory() as tmp:
-        capture.save_recording(os.path.join(tmp, "p.npz"), av.frames)
-        return capture.load_recording(os.path.join(tmp, "p.npz"))
+        gravacao.save_recording(os.path.join(tmp, "p.npz"), av.frames)
+        return gravacao.load_recording(os.path.join(tmp, "p.npz"))
 
 
 MEASURES = ("dedos", "mao_inteira", "confiabilidade")
@@ -229,7 +229,7 @@ def watch(in_measures):
         av.step(raw, raw["t"])
         if calls and phase == "avaliacao":
             given, smooth = calls[-1]
-            out.append((kin.joint_angles(raw["world"], hand), given, smooth, av))
+            out.append((goniometria.joint_angles(raw["world"], hand), given, smooth, av))
             out[-1] = out[-1][:3] + (av.session.trackers["index"].joints.copy(), av.display["index"].copy(),
                                      av.display_history[-1][1][1], av.session.history[-1][1][1])
     return out
@@ -267,7 +267,7 @@ for in_measures in (False, True):
     new = recalculo._recalculate(old, rows)
     check(f"recálculo: usa o filtro registrado (nas_medidas = {in_measures})",
           new["dedos"] == old["dedos"] and new["filtro"] == old["filtro"])
-old = av.results(rows[-1]["t"], "")                # registrado nas medidas, mas sem a chave (antigo)
+old = av.results(rows[-1]["t"], "")                # registrado nas medidas, mas gravado sem a chave
 old["filtro"] = {k: v for k, v in old["filtro"].items() if k != "nas_medidas"}
 new = recalculo._recalculate(old, rows)
 check("recálculo: registro sem nas_medidas = medidas com os dados brutos",
@@ -276,11 +276,10 @@ check("recálculo: registro sem nas_medidas = medidas com os dados brutos",
 
 # ------------------- padrão (só na exibição) = Desligada, na gravação de referência
 # Com a suavização só na exibição ao vivo, as medidas têm de ser idênticas às do modo Desligada
-# nesta mesma versão: o filtro não pode vazar para as medidas. (Até a 1.1.0 este teste comparava
-# com a tag v1.0.0; a 1.2.0 mudou as medidas de propósito: goniometria ISB e repetições nos dados
-# brutos, docs/AUDITORIA_CALCULOS.md.)
+# no mesmo código: o filtro não pode vazar para as medidas (os números absolutos da gravação
+# são conferidos em tests/test_reorganizacao.py).
 RECORDING = os.path.join(os.path.dirname(os.path.abspath(__file__)), "dados", "gravacao_referencia.npz")
-rows = capture.load_recording(RECORDING)
+rows = gravacao.load_recording(RECORDING)
 desligada = analisar(rows, filtro=filtros.DESLIGADA).results(rows[-1]["t"], "gravação")
 app_default = Avaliador(filtro=filtros.PADRAO, nas_medidas=False)   # o que a tela usa no padrão
 for raw in rows:

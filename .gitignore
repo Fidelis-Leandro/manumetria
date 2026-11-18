@@ -12,8 +12,11 @@ copias_de_seguranca/
 *.sqlite
 *.sqlite-journal
 
-# Modelo do MediaPipe (baixado pelo "Instalar sistema.bat")
+# Modelo do MediaPipe (baixado pelo "Instalar sistema.bat" para manumetria/recursos/)
 hand_landmarker.task
+
+# Arquivo de pontos sendo gravado (trocado pelo definitivo no fim da gravação)
+*.gravando
 
 # Sistema e editores
 Thumbs.db

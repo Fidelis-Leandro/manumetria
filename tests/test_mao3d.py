@@ -1,6 +1,6 @@
 """
-Testes da mão 3D procedural (app/componentes/mao3d.py), sem abrir janelas:
-  1) as esferas coloridas são exatamente as articulações medidas (kin.JOINTS)
+Testes da mão 3D procedural (manumetria/interface/componentes/mao3d.py), sem abrir janelas:
+  1) as esferas coloridas são exatamente as articulações medidas (goniometria.JOINTS)
   2) a malha passa pelos 21 pontos e tem o tamanho esperado
   3) cada esfera medida recebe a cor do seu dedo; as outras ficam neutras
   4) desempenho por quadro
@@ -15,9 +15,8 @@ import time
 import numpy as np
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from app.componentes import mao3d  # noqa: E402
-from nucleo import geometria  # noqa: E402
-from nucleo import kinematics as kin  # noqa: E402
+from manumetria.calculo import geometria, goniometria  # noqa: E402
+from manumetria.interface.componentes import mao3d  # noqa: E402
 
 failures = []
 
@@ -29,7 +28,7 @@ def check(cond, msg):
 
 
 # 1) articulações medidas: 2 no polegar + 3 em cada dedo longo
-expected = {tri[1] for joints in kin.JOINTS.values() for _, tri in joints}
+expected = {tri[1] for joints in goniometria.JOINTS.values() for _, tri in joints}
 check(set(mao3d.MEASURED) == expected and len(expected) == 14,
       f"14 articulações coloridas (MCP/PIP/DIP e MCP/IP do polegar): {sorted(mao3d.MEASURED)}")
 

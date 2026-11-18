@@ -9,7 +9,7 @@ avaliações semanais, observações do profissional, retestes e uma alta:
                               platô e alta
 
 Cada avaliação é uma mão simulada passando pelo MESMO motor da câmera
-(app/avaliador.py), com os pontos gravados: relatório, PDF, mapa e "Recalcular
+(manumetria/avaliacao/motor.py), com os pontos gravados: relatório, PDF, mapa e "Recalcular
 avaliações" funcionam como numa avaliação de verdade. As datas são contadas a
 partir de hoje, então a demonstração fica sempre "recente". Rodar de novo não
 duplica: pacientes que já existem são pulados.
@@ -25,11 +25,11 @@ import sys
 import numpy as np
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-import app.avaliador as avaliador  # noqa: E402
-from app.dados.banco import Banco  # noqa: E402
-from app.dados.resultados import mean_pct, retest_summary  # noqa: E402
-from nucleo import geometria  # noqa: E402
-from nucleo.caminhos import DB_PATH  # noqa: E402
+from manumetria.avaliacao import motor  # noqa: E402
+from manumetria.avaliacao.resultados import mean_pct, retest_summary  # noqa: E402
+from manumetria.calculo import geometria  # noqa: E402
+from manumetria.caminhos import DB_PATH  # noqa: E402
+from manumetria.dados.banco import Banco  # noqa: E402
 
 FPS = 30
 rng = np.random.default_rng(16)
@@ -90,15 +90,16 @@ def frames(p, t0, left):
     return rows
 
 
-def evaluate(p, start, left, retest=None):
-    """Passa os quadros pelo motor; com `retest`, faz o reteste em seguida (mão reposicionada)."""
-    av = avaliador.Avaliador()
+def evaluate(p, start, left, retest=None, pastas=None):
+    """Passa os quadros pelo motor; com `retest`, faz o reteste em seguida (mão reposicionada).
+    pastas = (pasta base, pasta dos pontos) do banco (Banco.root, Banco.points_dir)."""
+    av = motor.Avaliador(pastas=pastas)
     av.started_at = start
     for raw in frames(p, 1000.0, left):
         av.step(raw, raw["t"])
     res = av.results(av.frames[-1]["t"], "simulação")
     if retest:
-        again = avaliador.Avaliador(retest=True, frames=av.frames)    # continua os mesmos pontos
+        again = motor.Avaliador(retest=True, frames=av.frames, pastas=pastas)    # continua os mesmos pontos
         again.started_at = start + datetime.timedelta(minutes=3)
         for raw in frames(dict(p, **retest), av.frames[-1]["t"] + 180, left):
             again.step(raw, raw["t"])
@@ -114,6 +115,7 @@ def jitter(p):
 
 
 def lerp(a, b, x):
+    """Cada flexão de a até b, na fração x (0 = a, 1 = b)."""
     return [[ai + (bi - ai) * x for ai, bi in zip(fa, fb)] for fa, fb in zip(a, b)]
 
 
@@ -129,7 +131,7 @@ def add_patient(db, data, curve, plan, left=False):
              "thumb": (curve["thumb"][0], curve["thumb"][1] + (curve["thumb"][2] - curve["thumb"][1]) * x),
              "reps": 10, "periodo": 3.0 - 0.9 * x, "variacao": 0.14 - 0.11 * x}
         p.update(extra)
-        res = evaluate(p, when, left, jitter(p) if with_retest else None)
+        res = evaluate(p, when, left, jitter(p) if with_retest else None, (db.root, db.points_dir))
         db.salvar_sessao(pid, res, note)
     print(f"  {data['identificacao']}: {len(plan)} avaliações, última com "
           f"{mean_pct(res) * 100:.0f}% do normal")
@@ -219,9 +221,9 @@ MARIA_PLAN = [
 
 
 def main(db_path=DB_PATH):
-    if db_path != DB_PATH:                       # outro banco: pontos numa pasta ao lado dele
-        avaliador.POINTS_DIR = os.path.join(os.path.dirname(os.path.abspath(db_path)), "pontos")
-    db = Banco(db_path)
+    """Cria os 3 pacientes fictícios no banco padrão ou em outro arquivo (com outro banco,
+    os pontos ficam em pontos/ ao lado dele)."""
+    db = Banco(db_path)                          # outro banco: pontos na pasta pontos/ ao lado dele
     print("Criando pacientes fictícios de demonstração (leva cerca de 1 minuto)...")
     add_patient(db, EX, EX_CURVE, EX_PLAN)
     add_patient(db, JOAO, JOAO_CURVE, JOAO_PLAN)
