@@ -25,7 +25,8 @@ e a instalação estão no README.md.
 | `dados_locais/avaliacoes.sqlite` | pacientes e avaliações (SQLite) |
 | `dados_locais/config.json` | Configurações (instituição, logotipo, tema, tamanho) |
 | `dados_locais/pontos/` | pontos da mão de cada avaliação salva (.npz, sem vídeo) |
-| `relatorios/` | PDFs, CSVs e exportações para pesquisa |
+| `dados_locais/copias_de_seguranca/` | cópia do banco feita antes de cada migração do esquema |
+| `relatorios/` | PDFs, CSVs, planilhas e datasets de pesquisa |
 | `assets/logo_relatorio.png` | logotipo do PDF |
 
 ## Como o código está organizado
@@ -69,10 +70,17 @@ As dependências vão num sentido só: `app/` usa `nucleo/`, e `nucleo/` nunca i
 | `simulacao.py` | mão simulada (`--sim`) |
 | `telas/` | uma tela por arquivo: pacientes, ficha, avaliação, relatório, configurações, ajuda |
 | `componentes/` | partes das telas: palco 3D, mão 3D procedural (`mao3d.py`: cilindros, esferas e palma gerados a partir dos 21 pontos), painel do dedo (`painel.py`), peças pequenas como réguas, barras e abas (`pecas.py`), mapa da evolução (`mapa.py`), gráfico, barra do topo, dicas, diálogos |
-| `dados/` | banco, configurações, resultados, interpretação, PDF, exportação, recálculo |
+| `dados/` | banco (`banco.py`, com a migração), configurações, resultados, interpretação, PDF, planilha para o Excel (`exportacao.py`), dataset para pesquisa (`dataset.py`), recálculo |
+| `versao.py` | versão do ManuMetria e identificação do método dos ângulos, gravadas em cada avaliação |
 
 **Testes** — pasta `tests/`: `testar.py` (roda todos os testes), `test_*.py` e
 `dados/gravacao_referencia.npz` (pontos de uma mão saudável real, usados pelos testes).
+`test_banco.py` cobre a migração, o código fixo das avaliações e a gravação dos pontos;
+`test_dataset.py`, o dataset para pesquisa (com `--copia-do-banco` também exporta uma CÓPIA de
+`dados_locais`). O `test_dataset.py` relê os arquivos com o pandas, que é só de desenvolvimento:
+`.venv\Scripts\python.exe -m pip install -r requirements-dev.txt` (sem ele, usa o módulo csv). Nenhum
+teste toca em `dados_locais`: tudo roda em pastas temporárias (inclusive o caminho usado para apagar
+pontos, `caminhos.ROOT`).
 
 **Ferramentas** — pasta `tools/`: `criar_demonstracao.py` (3 pacientes fictícios com avaliações
 simuladas pelo mesmo motor da câmera), `analisar_gravacao.py` (passa um arquivo de pontos pelo motor e
@@ -83,11 +91,14 @@ chamado pelo `gerar_hash_registro.bat`).
 
 1. Calcule em `nucleo/kinematics.py` (por dedo) ou `nucleo/medidas.py` (mão inteira), sem interface.
 2. Guarde no resultado em `app/dados/resultados.py` (o banco salva o dicionário inteiro).
-3. Mostre no painel (`app/componentes/painel.py`), na ficha ou no CSV, se quiser.
+3. Mostre no painel (`app/componentes/painel.py`), na ficha ou no CSV, se quiser. Para o dataset de
+   pesquisa, acrescente a coluna em `app/dados/dataset.py` com a descrição, a unidade e o tipo (o teste
+   falha se o dicionário não cobrir todas as colunas).
 4. Explique a medida em `app/glossario.py` (vale para a dica ao passar o mouse e para a Ajuda) e use `explain(widget, "chave")` onde ela aparece.
 5. Escreva um teste em `tests/test_auditoria.py` (ou `tests/test_medidas.py`) com um caso de resposta
    conhecida.
-6. Rode `tests\testar.py`.
+6. Rode `tests\testar.py`. Se a conta de uma medida mudou, suba `VERSAO` em `app/versao.py` (e
+   `GONIOMETRIA`, se mudou o método dos ângulos): cada avaliação guarda a versão que a calculou.
 7. Para as avaliações já salvas ganharem a medida: Configurações > **Recalcular avaliações**
    (`app/dados/recalculo.py`). Ele passa os pontos gravados pelo cálculo atual, mostra o que
    muda antes de gravar e guarda o resultado anterior dentro da avaliação (`"original"`).
@@ -99,9 +110,27 @@ recalcular a partir dos pontos dá exatamente o mesmo resultado da avaliação a
 
 ## Banco de dados
 
-O banco se atualiza sozinho ao abrir: colunas novas são acrescentadas em `Banco.__init__`
-(`app/dados/banco.py`), sem apagar nada. Para acrescentar um campo do paciente, inclua em
-`FIELDS`, no `SCHEMA` e na lista de colunas novas.
+O esquema tem versão (`PRAGMA user_version`, `SCHEMA_VERSION` em `app/dados/banco.py`). Ao abrir,
+`Banco.__init__` copia o arquivo para `copias_de_seguranca/` (API de backup do SQLite) e `_migrate` leva o
+banco até a versão atual numa transação só. Regras: a migração só acrescenta (nenhum valor salvo muda), é
+idempotente (confere cada coluna antes de criar) e é testada em `tests/test_banco.py` num banco no
+formato antigo. Para acrescentar um campo do paciente: `FIELDS`, `SCHEMA` e um passo novo em `_migrate`
+com `SCHEMA_VERSION + 1`.
+
+- **v1 (1.3.0)**: `pacientes.sexo`; `pacientes.id_pesquisa` (pseudônimo aleatório, único);
+  `sessoes.codigo` (código fixo da avaliação no paciente, A01, A02..., preenchido uma vez na ordem das
+  avaliações existentes) e `pacientes.ultimo_codigo` (o número nunca é reaproveitado, nem depois de apagar
+  a última avaliação); índices.
+- **Salvar uma avaliação** (`salvar_sessao(..., gravar_pontos=...)`): grava os pontos primeiro (arquivo
+  temporário + `os.replace`), depois a linha e o código na mesma transação; se o banco falhar, apaga o
+  arquivo novo. **Apagar**: banco primeiro, arquivos depois.
+- O caminho dos pontos é salvo relativo à pasta do projeto, com `/` (`caminhos.relativo`); a leitura
+  (`caminhos.absoluto`) aceita também a `\` das avaliações salvas até a 1.2.0.
+- Cada resultado guarda `versao_app`, `goniometria` e `fuso_utc` (formato 3 de `resultados.py`); sem eles
+  = salvo antes da 1.3.0.
+- O dataset para pesquisa (`app/dados/dataset.py`) repassa os pontos pelo motor com
+  `analisar(..., por_quadro=...)`, que lê o registro de cada quadro em `Avaliador.quadro` (ângulos brutos
+  e suavizados, estado, descarte, vista, fase); esse registro não muda nenhuma conta.
 
 ## Combinados do projeto
 

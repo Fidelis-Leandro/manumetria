@@ -13,8 +13,9 @@ import sys
 
 from PyQt5 import QtCore, QtGui, QtWidgets
 
-from app.componentes.dialogos import ConfirmDialog
+from app.componentes.dialogos import ConfirmDialog, ExportDialog
 from app.dados import config as cfgmod
+from app.dados import dataset
 from app.dados import interpretacao as interp
 from app.dados.banco import Banco
 from app.dados.exportacao import export_research
@@ -44,6 +45,7 @@ class AppWindow(QtWidgets.QMainWindow):
         self.record = RecordScreen(self.db, get_config)
         self.evaluation = EvaluationScreen(source_factory)
         self.report = ReportScreen(self.db, get_config)
+        self.report.points_writer = lambda rel: self.evaluation.write_points(rel)
         self.settings = SettingsScreen(self.db)
         self.help = HelpScreen()
         for screen in (self.patients, self.record, self.evaluation, self.report, self.settings, self.help):
@@ -145,11 +147,8 @@ class AppWindow(QtWidgets.QMainWindow):
         self.stack.setCurrentWidget(self.report)
 
     def _session_saved(self, _sid):
-        """Salvou na ficha: grava os pontos da mão (só agora, para descartar não deixar
-        arquivo) e fecha a câmera."""
-        points = self.report.results.get("pontos")
-        if points:
-            self.evaluation.write_points(points)
+        """Salvou na ficha: fecha a câmera. Os pontos da mão já foram gravados pelo
+        relatório, antes da linha no banco (só ao salvar: descartar não deixa arquivo)."""
         self.evaluation.stop()
 
     def leave_report(self, pid):
@@ -159,20 +158,49 @@ class AppWindow(QtWidgets.QMainWindow):
     def _config_saved(self, cfg):
         self.cfg = cfg
 
-    def export_data(self, folder=None):
-        """Exportação para pesquisa numa pasta nova (escolhida pelo usuário)."""
+    def export_data(self, folder=None, kind=None, options=None, ask=True):
+        """Exportação numa pasta nova (escolhida pelo usuário): kind = "planilha" (CSV para o
+        Excel, como antes) ou "dataset" (dataset para pesquisa, app/dados/dataset.py).
+        Sem kind, pergunta. ask=False não abre o aviso final (testes)."""
+        if kind is None:
+            dlg = ExportDialog(self)
+            if dlg.exec_() != QtWidgets.QDialog.Accepted:
+                return None
+            kind, options = dlg.choice()
         if folder is None:
             base = QtWidgets.QFileDialog.getExistingDirectory(self, "Pasta para a exportação",
                                                               REPORTS_DIR)
             if not base:
                 return None
-            folder = os.path.join(base, datetime.datetime.now().strftime("exportacao_%Y%m%d_%H%M"))
-        path, rows = export_research(self.db, folder)
-        dlg = ConfirmDialog("Dados exportados",
-                            f"{rows} linhas (uma por avaliação e dedo) em {path}, com o dicionário de "
-                            "dados ao lado.", "Abrir a pasta", "Fechar", self)
-        if dlg.exec_() == QtWidgets.QDialog.Accepted:
-            QtGui.QDesktopServices.openUrl(QtCore.QUrl.fromLocalFile(folder))
+            prefix = "dataset_pesquisa" if kind == "dataset" else "exportacao"
+            folder = os.path.join(base, datetime.datetime.now().strftime(f"{prefix}_%Y%m%d_%H%M%S"))
+        if kind == "dataset":
+            progress = QtWidgets.QProgressDialog("Recalculando as avaliações a partir dos pontos…", None, 0, 1, self)
+            progress.setWindowTitle("Dataset para pesquisa")
+            progress.setWindowModality(QtCore.Qt.WindowModal)
+            progress.setMinimumDuration(300)
+
+            def step(i, total):
+                progress.setMaximum(max(total, 1))
+                progress.setValue(i)
+                QtWidgets.QApplication.processEvents()
+            try:
+                summary = dataset.exportar(self.db, folder, dataset.Opcoes(**(options or {})), progress=step)
+            finally:
+                progress.close()
+            path = folder
+            text = (f"{summary['avaliacoes']} avaliações de {summary['pacientes']} pacientes em {folder}, com o "
+                    "dicionário de dados, o LEIA-ME e os checksums.")
+            if summary["nao_conferem"]:
+                text += (f" Em {len(summary['nao_conferem'])} avaliação(ões) o recálculo difere do salvo "
+                         "(cálculo de uma versão anterior): veja o LEIA-ME.")
+        else:
+            path, rows = export_research(self.db, folder)
+            text = f"{rows} linhas (uma por avaliação e dedo) em {path}, com o dicionário de dados ao lado."
+        if ask:
+            dlg = ConfirmDialog("Dados exportados", text, "Abrir a pasta", "Fechar", self)
+            if dlg.exec_() == QtWidgets.QDialog.Accepted:
+                QtGui.QDesktopServices.openUrl(QtCore.QUrl.fromLocalFile(folder))
         return path
 
     def restart(self):

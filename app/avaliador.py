@@ -25,7 +25,7 @@ from nucleo import capture
 from nucleo import filtros
 from nucleo import kinematics as kin
 from nucleo import medidas
-from nucleo.caminhos import POINTS_DIR, ROOT
+from nucleo.caminhos import POINTS_DIR, absoluto, relativo
 from nucleo.stabilizer import HandStabilizer
 
 HAND_FRAMES_TO_START = 15     # quadros seguidos com mão para sair da preparação
@@ -82,12 +82,20 @@ class Avaliador:
         self.tremor = medidas.TremorMeter()
         self.counts = {"frames": 0, "ok": 0}
         self.fps_samples, self.bright_samples, self.view_samples = [], [], []
+        # registro do último quadro (exportação para pesquisa; não muda nenhuma conta):
+        # lado usado nos ângulos, ângulos brutos e suavizados, descarte, vista e se o
+        # quadro entrou nas medidas (e de qual Session: n_sessao muda com outra mão)
+        self.n_sessao = 0
+        self.quadro = {}
 
     # -------------------------------------------------------------- um quadro
     def step(self, raw, now):
         """Processa um quadro. Devolve um Passo com o que a tela precisa saber."""
         passo = Passo()
         self._record(raw)
+        self.quadro = {"lado_angulos": self.stab.hand, "angulos": None, "suavizados": None,
+                       "descartado": False, "vista_ruim": False, "estado": None, "medido": None,
+                       "pausado": self.paused, "fase": self.frames[-1]["fase"].replace("reteste_", "")}
         if self._message_until is not None and now >= self._message_until:
             self.message, self._message_until = None, None
 
@@ -104,8 +112,11 @@ class Avaliador:
                     self.session.discarded += 1
             elif not kin.good_view(raw["world"], self.stab.hand):
                 valid, bad_kind = False, "vista"
+            self.quadro.update(angulos=angles, descartado=not kin.plausible(angles),
+                               vista_ruim=bad_kind == "vista")
         use, state = self.stab.process(raw, valid, bad_kind)
         passo.state = state
+        self.quadro["estado"] = state
         if state != "ok":
             angles = None
         else:
@@ -121,6 +132,7 @@ class Avaliador:
             self.tremor.interrupt()
             return passo
         smooth = self._smooth(state, angles, angle_hand)
+        self.quadro["suavizados"] = smooth
         # calibração, tremor e medidas da mão inteira usam sempre os dados brutos; as
         # medidas por dedo também, a não ser com a suavização aplicada nas medidas;
         # a exibição ao vivo usa os ângulos suavizados
@@ -257,6 +269,7 @@ class Avaliador:
         """Um caminho só: a Session recebe os ângulos das medidas (dados brutos, ou
         suavizados com nas_medidas) e a exibição recebe os suavizados, no mesmo quadro."""
         self.session.update(measured, now)
+        self.quadro["medido"] = measured
         self.display = shown
         tams = [np.nan if shown is None else float(shown[f].sum()) for f in kin.FINGERS]
         self.display_history.append((now, tams))
@@ -265,6 +278,7 @@ class Avaliador:
 
     def _new_session(self, sens, now):
         self.session = kin.Session(sens, start_time=now)
+        self.n_sessao += 1
         self.display, self.display_history = None, deque()
 
     # ----------------------------------------------------- pausa e relógio
@@ -322,12 +336,12 @@ class Avaliador:
     def points_path(self):
         """Caminho (relativo à pasta do projeto) do arquivo de pontos desta avaliação."""
         stamp = self.started_at.strftime("%Y%m%d_%H%M%S")
-        return os.path.relpath(os.path.join(POINTS_DIR, f"sessao_{stamp}.npz"), ROOT)
+        return relativo(os.path.join(POINTS_DIR, f"sessao_{stamp}.npz"))
 
     def write_points(self, rel_path, settings=None):
         """Grava os pontos da mão de todos os quadros (avaliação e reteste)."""
         if self.frames:
-            capture.save_recording(os.path.join(ROOT, rel_path), self.frames, settings)
+            capture.save_recording(absoluto(rel_path), self.frames, settings)
 
     def results(self, now, source):
         return session_results(self.session, start=self.started_at, duration_s=self.elapsed(now),
@@ -338,11 +352,13 @@ class Avaliador:
                                smoothing=self.filtro.reg)
 
 
-def analisar(rows, retest=False, filtro=filtros.PADRAO):
+def analisar(rows, retest=False, filtro=filtros.PADRAO, por_quadro=None):
     """Passa quadros gravados (capture.load_recording) pelo motor, como a tela
     faria ao vivo. Repete a pausa e a recalibração onde a fase gravada indica.
     filtro = modo ou registro da suavização (o recálculo usa o salvo na avaliação,
     que diz se o filtro entra nas medidas; com um modo em texto, só na exibição).
+    por_quadro(raw, passo, av), se dado, é chamado depois de cada quadro (av.quadro tem o
+    registro do quadro; usado na exportação para pesquisa).
     Devolve o Avaliador no fim (use .results(rows[-1]["t"], ...))."""
     av = Avaliador(retest=retest, filtro=filtro)
     previous = ""
@@ -353,5 +369,7 @@ def analisar(rows, retest=False, filtro=filtros.PADRAO):
         if phase == "recalibracao" and previous != "recalibracao":
             av.recalibrate(raw["t"])
         previous = phase
-        av.step(raw, raw["t"])
+        passo = av.step(raw, raw["t"])
+        if por_quadro is not None:
+            por_quadro(raw, passo, av)
     return av

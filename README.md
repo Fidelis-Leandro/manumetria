@@ -65,7 +65,7 @@ flexores, zona II) ou da **Maria Souza (fictícia)** (fratura do rádio distal, 
 
 | Tela | Funções |
 |---|---|
-| **Pacientes** | cadastro, busca, filtro por situação, % do normal, tendência, destaque de quem está sem avaliação há mais de 3 semanas, exportação para pesquisa |
+| **Pacientes** | cadastro, busca, filtro por situação, % do normal, tendência, destaque de quem está sem avaliação há mais de 3 semanas, exportação (planilha identificada para o Excel ou dataset pseudonimizado para pesquisa) |
 | **Ficha** | dados do paciente, resumo por regras, lista de avaliações, gráfico de evolução (datas ou semanas desde a lesão), mapa da evolução, comparação entre avaliações, exclusão de avaliação |
 | **Avaliação** | câmera + mão 3D com as articulações coloridas, contagem de movimentos por dedo, medidas ao vivo, aviso de mão de lado / longe / perto, qualidade da captura, contador de repetições fortes, conferência ao encerrar |
 | **Relatório** | resultado por dedo, observações do profissional, reteste, PDF e CSV |
@@ -190,17 +190,58 @@ Cada medida tem um teste automático de **resposta conhecida** (`tests\test_audi
 | Tremor | oscilação senoidal de frequência e amplitude conhecidas (frequência e RMS = A/√2) |
 | Erro de medida (MDC), mudança real, tendência, platô | pares teste–reteste com o MDC calculado à mão (1,96 × desvio das diferenças), +5 pp por semana |
 | Tela, banco, CSV e recálculo | na gravação de referência: o salvo é o que a tela mostra, o CSV converte as unidades certas, o dicionário cobre todas as colunas e "Recalcular avaliações" num banco temporário reproduz o resultado |
+| Banco e gravação (`tests\test_banco.py`) | migração com cópia de segurança e idempotente, código fixo da avaliação (apagar a A02 não muda a A03), pontos gravados antes da linha no banco e de forma atômica, exclusão sem deixar avaliação apontando para arquivo apagado, versão e método registrados |
+| Dataset para pesquisa (`tests\test_dataset.py`) | releitura com o pandas (ou o módulo csv), IDs ligando todos os arquivos, medidas de `dedos.csv` refeitas a partir de `quadros` (tolerância 0,001°), nenhum nome nem data de nascimento nos arquivos, idade conferida à mão, checksums, dicionário com 100% das colunas, mesmos bytes ao exportar de novo |
 | Números citados nos textos | conferidos na gravação de referência (quadros descartados, tremor parado, tamanho da mão na imagem, tabela dos filtros) |
 | Checagem clínica | a mão saudável da gravação de referência não recebe nenhuma limitação |
 
-### Dados e privacidade
+### Dados e exportação para pesquisa
 
-- Pacientes, avaliações e pontos da mão ficam **só neste computador**, em `dados_locais/` (SQLite +
-  arquivos `.npz`, sem vídeo). Nada é enviado para a internet. Essa pasta não vai para o GitHub
-  (`.gitignore`).
-- Dado de saúde é dado pessoal sensível (LGPD, art. 11): no uso com pacientes reais, proteja o computador
-  (senha, criptografia do disco) e obtenha o consentimento dos participantes.
-- Para recriar os pacientes fictícios: `.venv\Scripts\python.exe tools\criar_demonstracao.py`.
+**Onde ficam.** Pacientes, avaliações e pontos da mão ficam **só neste computador**, em `dados_locais/`
+(SQLite + arquivos `.npz` com os 21 pontos de cada quadro, sem vídeo). Nada é enviado para a internet. Essa
+pasta não vai para o GitHub (`.gitignore`). Dado de saúde é dado pessoal sensível (LGPD, art. 11): no uso
+com pacientes reais, proteja o computador (senha, criptografia do disco) e obtenha o consentimento dos
+participantes.
+
+**Banco.** O esquema tem versão (`PRAGMA user_version`). Ao abrir uma versão nova, o banco se atualiza
+sozinho, numa transação só, depois de copiado para `dados_locais/copias_de_seguranca/`; a atualização só
+acrescenta (nenhuma medida muda). A versão 1.3.0 acrescentou o sexo do paciente, o pseudônimo de pesquisa
+(`id_pesquisa`, aleatório) e o **código fixo de cada avaliação** no paciente (A01, A02...: atribuído ao
+salvar e nunca renumerado; apagar uma avaliação deixa um buraco). Os pontos da mão são gravados antes da
+avaliação entrar no banco, num arquivo temporário trocado pelo definitivo no fim: se o programa fechar no
+meio, nenhuma avaliação fica apontando para um arquivo incompleto.
+
+**Rastreabilidade.** Desde a 1.3.0, cada avaliação guarda a versão do ManuMetria que calculou as medidas,
+o método dos ângulos e o fuso do horário. "Recalcular avaliações" registra a versão atual. O relatório, o
+PDF, o CSV do relatório e a planilha saem do mesmo resultado salvo.
+
+**Exportar dados** (tela Pacientes) oferece duas saídas:
+
+| | Planilha para o Excel | Dataset para pesquisa |
+|---|---|---|
+| Uso | clínico, **identificada** (nome, condição, datas) | pesquisa, **pseudonimizado** (`id_pesquisa`, sem nome nem data de nascimento) |
+| Arquivos | `avaliacoes_por_dedo.csv` + dicionário | `pacientes.csv`, `avaliacoes.csv`, `dedos.csv`, `repeticoes.csv`, `quadros/<id_avaliacao>.csv.gz`, `dicionario_de_dados.csv`, `LEIA-ME.md`, `checksums.sha256` |
+| Formato | `;`, vírgula decimal, UTF-8 com BOM (abre direto no Excel) | `,`, ponto decimal, UTF-8 sem BOM, faltante = vazio, sim/não = 1/0, ISO 8601 (pandas, R) |
+| Granularidade | avaliação × dedo | paciente, avaliação, avaliação × etapa (avaliação/reteste) × dedo, repetição, quadro |
+
+No dataset:
+
+- `quadros` traz, por quadro, o tempo, os 21 pontos 3D, a mão e a confiança do MediaPipe, a fase, o estado
+  do estabilizador, os descartes, a vista e os ângulos de cada articulação nos dados brutos e suavizados;
+  com ele dá para refazer as medidas de `dedos.csv` sem o programa;
+- as medidas das avaliações com pontos são **recalculadas dos pontos** com o cálculo da versão que exporta
+  (o mesmo da tela); `confere_com_salvo` e `maior_diferenca_salvo_graus` dizem se batem com o resultado
+  salvo. Avaliações sem pontos saem com as medidas salvas;
+- por padrão as **datas são relativas** (dias desde a primeira avaliação do paciente) e a idade é calculada
+  na exportação (a data de nascimento não sai); opções: datas exatas e a condição/diagnóstico (texto
+  livre). As observações nunca saem; as coordenadas 2D da imagem ficam fora;
+- as coordenadas 3D da mão são **dado biométrico** (LGPD, art. 5º, II): o dataset só deve ser
+  compartilhado com acesso controlado, aprovação do CEP e consentimento dos participantes. O pseudônimo
+  não pode ser revertido sem o banco local. O `LEIA-ME.md` de cada exportação traz os métodos, as
+  referências e esses avisos; a licença dos dados está a definir com o NIT;
+- tamanho: cerca de 200–250 KB por avaliação, ou ~360 KB com reteste (quase tudo em `quadros`).
+
+Para recriar os pacientes fictícios: `.venv\Scripts\python.exe tools\criar_demonstracao.py`.
 
 ## Estrutura de pastas
 
@@ -210,9 +251,10 @@ nucleo/                  cálculo, sem interface (numpy): câmera, cinemática, 
 app/                     interface (PyQt5): janela, telas, componentes, mão 3D, banco e relatórios
   telas/                 uma tela por arquivo (pacientes, ficha, avaliação, relatório, configurações, ajuda)
   componentes/           partes das telas (palco 3D, mão 3D procedural em mao3d.py, painéis, gráficos)
-  dados/                 banco SQLite, configurações, resultados, interpretação, PDF, exportação
+  dados/                 banco SQLite, configurações, resultados, interpretação, PDF, planilha e dataset de pesquisa
 assets/                  logotipo padrão do relatório
 tests/                   testes automáticos (tests\testar.py roda todos)
+requirements-dev.txt     só para os testes (pandas); não é preciso para usar o sistema
 tools/                   pacientes de demonstração e análise de gravações
 docs/                    imagens da documentação
 Instalar sistema.bat     instalação completa no Windows

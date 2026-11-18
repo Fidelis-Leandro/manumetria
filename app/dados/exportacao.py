@@ -1,6 +1,9 @@
 """
-Exportação para pesquisa: todas as avaliações de todos os pacientes num CSV
-"longo" (uma linha por avaliação x dedo), mais o dicionário de dados.
+Planilha para o Excel ("Exportar dados > Planilha", IDENTIFICADA, para uso clínico):
+todas as avaliações de todos os pacientes num CSV "longo" (uma linha por avaliação x
+dedo), mais o dicionário de dados. Traz a identificação do paciente, a condição e as
+datas; não traz o caminho dos arquivos de pontos. Para pesquisa, use o dataset
+pseudonimizado (app/dados/dataset.py).
 CSV com ';', vírgula decimal e BOM (abre direto no Excel em português; no R:
 read.csv2; no pandas: sep=';', decimal=',').
 """
@@ -40,7 +43,6 @@ SESSION_COLUMNS = [
     ("quadros_validos_pct", "Quadros da avaliação com medida válida", "%"),
     ("quadros_descartados", "Quadros descartados por ângulo impossível", "quadros"),
     ("tem_reteste", "A avaliação tem reteste (medição repetida logo depois)", "sim/nao"),
-    ("arquivo_pontos", "Arquivo com os pontos da mão de cada quadro (.npz, pasta do projeto)", ""),
     ("abertura_ind_med", "Abertura máxima entre as falanges proximais do indicador e do médio, no plano da "
                          "palma, só com a MCP dos dois até 30°", "graus"),
     ("abertura_med_ane", "Abertura máxima entre médio e anelar (mesma regra)", "graus"),
@@ -99,6 +101,11 @@ FINGER_DESCRIPTIONS = {
 
 RETEST_COLUMNS = [("reteste_pct_normal", "TAM ativo do reteste em % do normal", "%"),
                   ("reteste_tam_ativo", "TAM ativo do reteste", "graus")]
+# rastreabilidade (1.3.0): no fim da linha, para não mudar a posição das colunas anteriores
+TRACE_COLUMNS = [("versao_calculo", "Versão do ManuMetria que calculou as medidas da linha. Vazio = não "
+                                    "registrada (avaliação salva antes da 1.3.0; a 1.2.0 mudou a goniometria, "
+                                    "veja o README). Recalcular avaliações registra a versão atual", ""),
+                 ("metodo_goniometria", "Método dos ângulos registrado na avaliação (vazio = não registrado)", "")]
 
 
 def _finger_descriptions():
@@ -122,7 +129,8 @@ def export_research(db, folder):
     n = 0
     with open(data_path, "w", newline="", encoding="utf-8-sig") as fh:
         w = csv.writer(fh, delimiter=";")
-        w.writerow([c for c, _, _ in SESSION_COLUMNS] + CSV_HEADER + [c for c, _, _ in RETEST_COLUMNS])
+        w.writerow([c for c, _, _ in SESSION_COLUMNS] + CSV_HEADER + [c for c, _, _ in RETEST_COLUMNS]
+                   + [c for c, _, _ in TRACE_COLUMNS])
         for s in db.todas_sessoes():
             p = patients.get(s["paciente_id"], {})
             res = s["resultados"]
@@ -141,22 +149,24 @@ def export_research(db, folder):
                        smoothing_text(res), "sim" if smoothing_in_measures(res) else "nao",
                        rel.get("nivel", ""), " / ".join(rel.get("motivos", [])),
                        csv_num((rel.get("detalhes") or {}).get("validos_pct"), 1), res["descartados"],
-                       "sim" if res.get("reteste") else "nao", res.get("pontos") or "",
+                       "sim" if res.get("reteste") else "nao",
                        csv_num(spread[0]), csv_num(spread[1]), csv_num(spread[2]),
                        csv_num(whole.get("abertura_dedos_total")), csv_num(whole.get("abertura_polegar")),
                        ("sim" if tremor.get("ritmico") else "nao") if tremor else "",
                        csv_num(tremor.get("frequencia_hz"), 1), csv_num(tremor.get("rms_mm"), 2),
                        tremor.get("segundos", "")]
+            trace = [res.get("versao_app") or "", res.get("goniometria") or ""]
             for f in kin.FINGERS:
                 rt = ((res.get("reteste") or {}).get("dedos") or {}).get(f) or {}
                 pct = rt.get("pct_normal")
                 w.writerow(session + finger_row(f, res["dedos"][f])
-                           + [csv_num(None if pct is None else pct * 100), csv_num(rt.get("tam_ativo"))])
+                           + [csv_num(None if pct is None else pct * 100), csv_num(rt.get("tam_ativo"))]
+                           + trace)
                 n += 1
     with open(os.path.join(folder, "dicionario_de_dados.csv"), "w", newline="", encoding="utf-8-sig") as fh:
         w = csv.writer(fh, delimiter=";")
         w.writerow(["variavel", "descricao", "unidade"])
-        for row in SESSION_COLUMNS + _finger_descriptions() + RETEST_COLUMNS:
+        for row in SESSION_COLUMNS + _finger_descriptions() + RETEST_COLUMNS + TRACE_COLUMNS:
             w.writerow(row)
         w.writerow([])
         w.writerow(["observacao", "Uma linha por avaliação e dedo (exportado pelo ManuMetria). "

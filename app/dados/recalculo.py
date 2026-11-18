@@ -19,9 +19,9 @@ from app.avaliador import analisar
 from app.dados.resultados import mean_pct, retest_summary
 from nucleo import capture
 from nucleo import filtros
-from nucleo.caminhos import ROOT
+from nucleo import caminhos
 
-KEEP = ("inicio", "duracao_s", "fonte", "pontos")   # dados da sessão, não do cálculo
+KEEP = ("inicio", "fuso_utc", "duracao_s", "fonte", "pontos")   # dados da sessão, não do cálculo
 
 
 def preparar(db, progress=None):
@@ -37,7 +37,7 @@ def preparar(db, progress=None):
         old = s["resultados"]
         item = {"sessao": s, "paciente": patients.get(s["paciente_id"], ""), "novo": None,
                 "antes": mean_pct(old), "depois": None, "maior_diferenca": None}
-        path = os.path.join(ROOT, old["pontos"]) if old.get("pontos") else None
+        path = caminhos.absoluto(old["pontos"], caminhos.ROOT) if old.get("pontos") else None
         if not path:
             item["motivo"] = "sem pontos gravados"
         elif not os.path.exists(path):
@@ -55,8 +55,11 @@ def _recalculate(old, rows):
     main = [r for r in rows if not r["fase"].startswith("reteste_")]
     reg = filtros.registro_de(old.get("filtro"))     # o filtro usado na própria avaliação
     new = analisar(main, filtro=reg).results(main[-1]["t"], old.get("fonte", ""))
-    for key in KEEP:
-        new[key] = old.get(key)
+    for key in KEEP:          # "versao_app" e "goniometria" ficam os do cálculo novo
+        if key in old:
+            new[key] = old[key]
+        else:                 # ex.: fuso não registrado (salva antes da 1.3.0): não inventa
+            new.pop(key, None)
     if "filtro" not in old:                          # sem registro: fica como estava
         new.pop("filtro", None)
     if old.get("reteste"):

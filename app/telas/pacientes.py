@@ -18,6 +18,7 @@ from nucleo import kinematics as kin
 NOT_INFORMED = "não informada"
 HANDS_DOMINANT = [NOT_INFORMED, "Direita", "Esquerda", "Ambidestro"]
 HANDS_EVALUATED = [NOT_INFORMED, "Direita", "Esquerda", "Ambas"]
+SEXES = [("", "não informado"), ("feminino", "Feminino"), ("masculino", "Masculino")]   # banco.SEXES
 SITUATIONS = [("tratamento", "Em tratamento"), ("alta", "Alta")]
 SUBTITLE = "ManuMetria · Avaliação cinemática da mão por visão computacional"
 TREND_COLOR = {"melhora": GOOD, "piora": POOR, "plato": FAIR, "estavel": MUTED}
@@ -95,6 +96,8 @@ class PatientDialog(QtWidgets.QDialog):
         self.ident = QtWidgets.QLineEdit()
         self.ident.setPlaceholderText("Código ou nome (obrigatório)")
         self.birth = _DateField()
+        self.sex = QtWidgets.QComboBox()
+        self.sex.addItems([text for _, text in SEXES])
         self.dominant = QtWidgets.QComboBox()
         self.dominant.addItems(HANDS_DOMINANT)
         self.evaluated = QtWidgets.QComboBox()
@@ -109,7 +112,7 @@ class PatientDialog(QtWidgets.QDialog):
         self.notes = QtWidgets.QPlainTextEdit()
         self.notes.setFixedHeight(80)
         rows = [("Identificação", self.ident), ("Data de nascimento", self.birth),
-                ("Mão dominante", self.dominant), ("Mão avaliada", self.evaluated),
+                ("Sexo", self.sex), ("Mão dominante", self.dominant), ("Mão avaliada", self.evaluated),
                 ("Condição / diagnóstico", self.condition),
                 ("Data da lesão ou cirurgia", self.injury),
                 ("Profissional responsável", self.professional), ("Situação", self.situation),
@@ -137,6 +140,7 @@ class PatientDialog(QtWidgets.QDialog):
         data = data or {}
         self.ident.setText(data.get("identificacao") or "")
         self.birth.set_iso(data.get("nascimento"))
+        self.sex.setCurrentIndex(next((i for i, (k, _) in enumerate(SEXES) if k == (data.get("sexo") or "")), 0))
         self.dominant.setCurrentText(data.get("mao_dominante") or NOT_INFORMED)
         self.evaluated.setCurrentText(data.get("mao_avaliada") or NOT_INFORMED)
         self.condition.setText(data.get("condicao") or "")
@@ -159,6 +163,7 @@ class PatientDialog(QtWidgets.QDialog):
         hand = lambda combo: "" if combo.currentText() == NOT_INFORMED else combo.currentText()
         discharged = self.situation.currentIndex() == 1
         return {"identificacao": self.ident.text().strip(), "nascimento": self.birth.iso(),
+                "sexo": SEXES[self.sex.currentIndex()][0],
                 "mao_dominante": hand(self.dominant), "mao_avaliada": hand(self.evaluated),
                 "condicao": self.condition.text().strip(), "data_lesao": self.injury.iso(),
                 "profissional": self.professional.text().strip(),

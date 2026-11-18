@@ -41,6 +41,16 @@ instalação. Cada componente continua sob a licença do seu autor.
 | sounddevice | MIT |
 | tzdata | Apache 2.0 |
 
+## Só desenvolvimento (`requirements-dev.txt`)
+
+Usadas apenas pelos testes automáticos; não são necessárias para usar o sistema e não entram no
+`requirements.txt`.
+
+| Componente | Versão | Licença | Uso |
+|---|---|---|---|
+| [pandas](https://pandas.pydata.org/) | 2.3.3 | BSD-3-Clause | `tests/test_dataset.py` relê os CSV do dataset de pesquisa (depende de NumPy, python-dateutil e tzdata, já listados acima) |
+| pytz (dependência do pandas) | 2026.6 | MIT | fusos horários no pandas |
+
 ## Ambiente
 
 | Componente | Licença |

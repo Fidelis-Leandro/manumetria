@@ -50,6 +50,23 @@ SECTIONS = [
     ("evolucao", "Evolução e interpretação (ficha e lista de pacientes)",
      ["reteste", "erro_medida", "mudanca_real", "faixa_erro", "tendencia", "plato", "resumo", "mapa", "semanas",
       "situacao", "ultima_avaliacao"]),
+    ("dados", "Dados e exportação", """
+<ul>
+<li>Pacientes, avaliações e os pontos da mão de cada quadro ficam só neste computador (pasta
+    <i>dados_locais</i>). Ao atualizar o sistema, o banco é copiado para <i>copias_de_seguranca</i> antes de
+    mudar.</li>
+<li>Cada avaliação recebe um <b>código fixo</b> no paciente (A01, A02...). Apagar uma avaliação deixa um
+    buraco na numeração: os códigos das outras não mudam.</li>
+<li><b>Exportar dados</b> (tela Pacientes) tem duas saídas. A <b>planilha para o Excel</b> é
+    <b>identificada</b> (nome, condição e datas), para uso clínico. O <b>dataset para pesquisa</b> é
+    pseudonimizado: sem nome nem data de nascimento, com datas relativas (dias desde a 1ª avaliação), em
+    arquivos ligados por códigos (pacientes, avaliações, dedos, repetições e quadros), com dicionário de
+    dados, LEIA-ME e checksums.</li>
+<li>No dataset, as medidas são recalculadas dos pontos gravados; a coluna <i>confere_com_salvo</i> diz se
+    batem com o relatório. Opções: datas exatas e a condição (texto livre). As observações nunca saem.</li>
+<li>Os pontos 3D da mão são dado biométrico (dado pessoal sensível, LGPD): compartilhe o dataset só com
+    acesso controlado, aprovação do Comitê de Ética em Pesquisa e consentimento dos participantes.</li>
+</ul>"""),
     ("limites", "Limites do sistema", """
 <ul>
 <li>As medidas são <b>estimativas por câmera comum</b>, sem marcadores: não substituem a goniometria.

@@ -38,6 +38,7 @@ class ReportScreen(QtWidgets.QWidget):
         super().__init__()
         self.db, self.get_config = db, get_config
         self.patient, self.results, self.history = {}, None, []
+        self.points_writer = None          # grava os pontos da mão (a janela liga à avaliação)
         self.sid = None                       # None = sessão ainda não salva
 
         v = QtWidgets.QVBoxLayout(self)
@@ -189,7 +190,14 @@ class ReportScreen(QtWidgets.QWidget):
 
     # ---------------------------------------------------------------- ações
     def save_session(self):
-        self.sid = self.db.salvar_sessao(self.patient["id"], self.results, self.notes.toPlainText())
+        # os pontos da mão são gravados antes da linha no banco (app/dados/banco.py)
+        try:
+            self.sid = self.db.salvar_sessao(self.patient["id"], self.results, self.notes.toPlainText(),
+                                             gravar_pontos=self.points_writer)
+        except OSError as exc:
+            self.status.setText(f"Não foi possível salvar os pontos da mão ({exc}). A avaliação não foi "
+                                "salva: confira o espaço em disco e tente de novo.")
+            return
         self._set_mode(saved=True)
         self.status.setText("Avaliação salva na ficha do paciente.")
         self.session_saved.emit(self.sid)

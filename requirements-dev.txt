@@ -1,0 +1,6 @@
+# Só para desenvolvimento e testes (NÃO é necessário para usar o ManuMetria).
+# Instalação, depois do requirements.txt:
+#     .venv\Scripts\python.exe -m pip install -r requirements-dev.txt
+pandas==2.3.3   # tests/test_dataset.py relê o dataset de pesquisa com o pandas (BSD-3-Clause)
+# (a 3.1.1 teve a DLL bloqueada pelo Controle de Aplicativo do Windows 11 nesta máquina;
+#  a 2.3.3 instala também o pytz, MIT)

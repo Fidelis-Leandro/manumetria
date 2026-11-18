@@ -188,12 +188,23 @@ def save_recording(path, rows, settings=None):
             world[i], img[i] = r["world"], r["img"]
     num = lambda k: np.array([np.nan if r.get(k) is None else r[k] for r in rows], dtype=float)
     os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
-    np.savez_compressed(       # pontos em float32: precisão de micrômetros, metade do tamanho
-        path, t=num("t"), world=world.astype(np.float32), img=img.astype(np.float32),
-        confidence=num("confidence"), handedness=np.array([r["handedness"] or "" for r in rows]),
-        aspect=num("aspect"), fps=num("fps"), brightness=num("brightness"),
-        inference_ms=num("inference_ms"), fase=np.array([r.get("fase") or "" for r in rows]),
-        settings=np.array(repr(settings or {})))
+    # grava num arquivo temporário e só então troca pelo definitivo: se o programa fechar no
+    # meio, não fica um .npz pela metade com o nome da avaliação
+    tmp = path + ".gravando"
+    try:
+        with open(tmp, "wb") as fh:
+            np.savez_compressed(   # pontos em float32: precisão de micrômetros, metade do tamanho
+                fh, t=num("t"), world=world.astype(np.float32), img=img.astype(np.float32),
+                confidence=num("confidence"), handedness=np.array([r["handedness"] or "" for r in rows]),
+                aspect=num("aspect"), fps=num("fps"), brightness=num("brightness"),
+                inference_ms=num("inference_ms"), fase=np.array([r.get("fase") or "" for r in rows]),
+                settings=np.array(repr(settings or {})))
+            fh.flush()
+            os.fsync(fh.fileno())
+        os.replace(tmp, path)
+    finally:
+        if os.path.exists(tmp):
+            os.remove(tmp)
 
 
 def load_recording(path):

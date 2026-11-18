@@ -6,6 +6,7 @@ então uma sessão salva semanas atrás é lida exatamente como uma recém-feita
 
 import csv
 
+from app.versao import GONIOMETRIA, VERSAO as APP_VERSION
 from nucleo import filtros
 from nucleo import kinematics as kin
 from nucleo import medidas
@@ -13,7 +14,10 @@ from nucleo import medidas
 # 2: medidas novas (arco funcional, Strickland, polpa-palma, velocidade de pico,
 #    suavidade, tendências, mão inteira, tremor, confiabilidade, pontos gravados).
 #    Sessões da versão 1 continuam legíveis: todo campo novo é opcional na leitura.
-VERSION = 2
+# 3 (ManuMetria 1.3.0): "versao_app" (versão que calculou as medidas), "goniometria"
+#    (método dos ângulos) e "fuso_utc" (fuso do horário de "inicio", ex.: "-03:00").
+#    Sem esses campos = avaliação salva antes da 1.3.0 (método não registrado).
+VERSION = 3
 HAND_NAMES = {"Right": "Mão direita", "Left": "Mão esquerda"}
 CALIBRATION_NAMES = {"completa": "medida na calibração",
                      "aproximada": "aproximada (a mão não ficou parada)",
@@ -60,11 +64,25 @@ def session_results(session, *, start, duration_s, hand, calibrated, source,
     if whole is not None:
         whole = {k: v for k, v in whole.items() if k != "polpa_palma_cm"}   # já vai em cada dedo
         whole["tremor"] = tremor.result() if tremor is not None else None
-    return {"versao": VERSION, "inicio": start.isoformat(timespec="seconds"),
+    return {"versao": VERSION, "versao_app": APP_VERSION, "goniometria": GONIOMETRIA,
+            "inicio": start.isoformat(timespec="seconds"), "fuso_utc": utc_offset(start),
             "duracao_s": int(duration_s), "mao": hand, "calibracao": calib, "fonte": source,
             "pontos": points, "descartados": int(session.discarded),
             "filtro": dict(smoothing) if smoothing else filtros.registro(filtros.DESLIGADA),
             "confiabilidade": reliability, "mao_inteira": whole, "dedos": fingers}
+
+
+def utc_offset(moment):
+    """Fuso do horário local de `moment` (datetime sem fuso), ex.: "-03:00"."""
+    off = moment.astimezone().utcoffset()
+    minutes = int(off.total_seconds() // 60)
+    sign = "-" if minutes < 0 else "+"
+    return f"{sign}{abs(minutes) // 60:02d}:{abs(minutes) % 60:02d}"
+
+
+def calculation_version(results):
+    """Versão do ManuMetria que calculou as medidas, ou None (salva antes da 1.3.0)."""
+    return results.get("versao_app")
 
 
 def retest_summary(results):
