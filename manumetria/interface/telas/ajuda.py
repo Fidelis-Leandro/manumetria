@@ -64,7 +64,7 @@ SECTIONS = [
     dados, LEIA-ME e checksums.</li>
 <li>No dataset, as medidas são recalculadas dos pontos gravados; a coluna <i>confere_com_salvo</i> diz se
     batem com o relatório. Opções: datas exatas e a condição (texto livre). As observações nunca saem.</li>
-<li>Os pontos 3D da mão são dado biométrico (dado pessoal sensível, LGPD): compartilhe o dataset só com
+<li>As coordenadas dos pontos da mão são dado biométrico (dado pessoal sensível, LGPD): compartilhe o dataset só com
     acesso controlado, aprovação do Comitê de Ética em Pesquisa e consentimento dos participantes.</li>
 </ul>"""),
     ("limites", "Limites do sistema", """

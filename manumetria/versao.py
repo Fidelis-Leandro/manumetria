@@ -6,7 +6,7 @@ cálculo foi obtido. Avaliações nos formatos 1 e 2 não têm esse registro (a 
 goniometria está no CHANGELOG.md; o método atual, em docs/METODOLOGIA.md).
 """
 
-VERSAO = "1.5.0"
+VERSAO = "1.5.1"
 
 # Ângulos por decomposição por osso, recomendação ISB (Wu et al., 2005)
 GONIOMETRIA = "isb_decomposicao_por_osso"

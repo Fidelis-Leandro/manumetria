@@ -107,7 +107,7 @@ Como cada medida é calculada (goniometria ISB, filtros, referências clínicas 
   - **Planilha para o Excel**: identificada (nome, condição e datas), para uso clínico;
   - **Dataset para pesquisa**: pseudonimizado, sem nome nem data de nascimento, com datas relativas e
     dicionário de dados.
-- **LGPD**: dado de saúde é dado pessoal sensível, e os pontos 3D da mão são dado biométrico. No uso com
+- **LGPD**: dado de saúde é dado pessoal sensível, e as coordenadas dos pontos da mão (a posição de cada articulação no espaço) são dado biométrico. No uso com
   pacientes reais, proteja o computador (senha, criptografia do disco) e obtenha o consentimento dos
   pacientes.
 - **Pesquisa**: o uso dos dados em pesquisa exige aprovação do Comitê de Ética em Pesquisa (CEP) e o

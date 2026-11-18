@@ -2,6 +2,13 @@
 
 Da versão mais nova para a mais antiga. Como o método de cálculo funciona hoje: [docs/METODOLOGIA.md](docs/METODOLOGIA.md).
 
+## 1.5.1 — 18/11/2026
+
+README e Ajuda sem menção à mão 3D. Código e cálculos iguais aos da 1.5.0.
+
+- README: na seção "Dados e privacidade", "pontos 3D da mão" virou "coordenadas dos pontos da mão".
+- Ajuda do app: o mesmo ajuste no aviso de LGPD sobre o dataset.
+
 ## 1.5.0 — 18/11/2026
 
 Mão 3D desativada por decisão de projeto; o código continua no repositório e pode ser religado em
