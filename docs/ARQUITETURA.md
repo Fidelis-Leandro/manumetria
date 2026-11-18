@@ -24,7 +24,7 @@ executar) e falha se a regra for quebrada.
 | `avaliacao/` | a avaliação em si, sem interface | `motor.py` (`Avaliador`, `analisar`), `resultados.py` (o resultado como dicionário), `interpretacao.py` (erro de medida, mudança real, tendência, platô, resumo) |
 | `dados/` | persistência e exportação | `banco.py` (SQLite, migração), `configuracoes.py`, `recalculo.py`, `planilha.py` (CSV para o Excel), `dataset.py` (dataset para pesquisa) |
 | `relatorios/` | o documento da avaliação | `pdf.py` (prévia e PDF, com QTextDocument) |
-| `interface/` | janela e telas (PyQt5) | `janela.py`, `tema.py`, `icones.py`, `glossario.py`, `telas/`, `componentes/` |
+| `interface/` | janela e telas (PyQt5) | `janela.py`, `tema.py`, `icones.py`, `glossario.py`, `opcoes.py` (interruptor da mão 3D), `telas/`, `componentes/` |
 | utilitários | usados por todas as camadas | `caminhos.py` (todas as pastas e arquivos), `versao.py` (versão e método dos ângulos), `formato.py` (números e datas em português) |
 | `recursos/` | arquivos que acompanham o sistema | `logo_relatorio.png` (logotipo padrão), `hand_landmarker.task` (modelo do MediaPipe, baixado na instalação, fora do Git) |
 
@@ -52,6 +52,23 @@ câmera ─► captura/camera.py ─► avaliacao/motor.py ───────
    brutos (ou os suavizados, se a suavização vale também nas medidas).
 3. A tela só mostra o que o motor decide. Ao encerrar, `Avaliador.results()` monta o dicionário que vai
    para o banco, o relatório, o CSV e o dataset.
+
+## Mão 3D (desligada): o interruptor `MAO_3D_ATIVA`
+
+A mão 3D da tela de avaliação (miniatura no canto do palco, botões "Câmera / Modelo 3D", legenda das
+cores e dica ao passar o mouse) está **desligada por decisão de projeto**. O interruptor é a constante
+`MAO_3D_ATIVA` em `manumetria/interface/opcoes.py` (fixa no código; não aparece nas Configurações):
+
+- `False` (atual): o palco mostra só a câmera, em toda a área. `interface/componentes/mao3d.py` e o OpenGL
+  (`pyqtgraph.opengl`, PyOpenGL) **não são importados**: `palco.Hand3D` os importa só ao ser criada, e a
+  tela de avaliação só a cria com o interruptor ligado. O app abre mesmo sem suporte a OpenGL.
+- `True`: a tela volta a ser como na 1.4.2 (miniatura, botões, legenda, dicas sobre a mão 3D).
+
+O interruptor só muda a interface: cálculo, banco, PDF, planilha e dataset são os mesmos nos dois estados
+(o motor continua entregando a pose em `Passo.pose`). Para religar: troque para `True` em `opcoes.py`,
+rode `tests	estar.py` (o `test_interruptor_mao3d.py` abre a tela nos dois estados e o `test_mao3d.py`
+testa a malha) e volte a documentar a mão 3D no README, na Ajuda e no INSTALACAO.md (requisito de
+OpenGL 2.0). O código e os testes da mão 3D continuam no repositório.
 
 ## Onde ficam os dados
 
@@ -84,6 +101,8 @@ relativos a essa pasta base, com `/`, então a pasta pode ser copiada para outro
   `tests/dados/referencia_resultados.json`. Uma mudança intencional de cálculo exige gerar de novo esse
   arquivo e documentar a mudança em `docs/AUDITORIA_CALCULOS.md`, `docs/METODOLOGIA.md` e `CHANGELOG.md`.
 - `tests/test_pastas.py`: pastas do banco padrão e de outro banco, logotipo, e `dados_locais` intacto.
+- `tests/test_interruptor_mao3d.py`: a tela de avaliação com `MAO_3D_ATIVA` desligada (sem mão 3D e sem
+  importar o OpenGL) e ligada (com a mão 3D).
 
 ## Convenções
 

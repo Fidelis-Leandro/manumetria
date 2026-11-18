@@ -17,7 +17,8 @@ import time
 TOOLS = os.path.dirname(os.path.abspath(__file__))
 TESTS = ["test_arquitetura.py", "test_cinematica.py", "test_metricas.py", "test_medidas.py",
          "test_estabilizador.py", "test_mao3d.py", "test_filtros.py", "test_auditoria.py",
-         "test_reorganizacao.py", "test_banco.py", "test_pastas.py", "test_dataset.py"]
+         "test_reorganizacao.py", "test_banco.py", "test_pastas.py", "test_dataset.py",
+         "test_interruptor_mao3d.py"]
 
 failed = []
 for name in TESTS:

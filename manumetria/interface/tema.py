@@ -5,8 +5,9 @@ ficar consistente; a formatação de números e datas fica em manumetria/formato
 
 Dois temas, escuro e claro, escolhidos em Configurações. O tema é lido ao abrir
 o programa: as cores viram constantes e cada tela monta seus estilos com elas
-(por isso trocar de tema pede reiniciar). O palco (câmera + mão 3D) fica escuro
-nos dois, como uma área de vídeo: a imagem e a mão 3D mantêm o contraste.
+(por isso trocar de tema pede reiniciar). O palco da câmera fica escuro
+nos dois, como uma área de vídeo: a imagem mantém o contraste (e a mão 3D, se
+ligada em opcoes.MAO_3D_ATIVA).
 """
 
 from PyQt5 import QtCore, QtGui, QtWidgets
@@ -65,7 +66,7 @@ ON_WARN = "#1a1300"
 FONT = "Segoe UI"
 MIN_FONT_PX = 12                  # nenhum texto abaixo disso
 
-# Palco (câmera + mão 3D): sempre escuro, com as cores do tema escuro
+# Palco da câmera (e da mão 3D, se ligada): sempre escuro, com as cores do tema escuro
 VIEW_BG = "#0b1118"
 VIEW_TEXT = "#e6edf3"
 VIEW_MUTED = "#93a1ae"
@@ -85,7 +86,7 @@ def qcolor(hex_color, alpha=255):
 
 
 def rgba(hex_color, a=1.0):
-    """Cor hexadecimal -> (r, g, b, a) de 0 a 1 (OpenGL)."""
+    """Cor hexadecimal -> (r, g, b, a) de 0 a 1."""
     c = QtGui.QColor(hex_color)
     return (c.redF(), c.greenF(), c.blueF(), a)
 

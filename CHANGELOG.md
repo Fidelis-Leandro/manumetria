@@ -2,6 +2,19 @@
 
 Da versão mais nova para a mais antiga. Como o método de cálculo funciona hoje: [docs/METODOLOGIA.md](docs/METODOLOGIA.md).
 
+## 1.5.0 — 18/11/2026
+
+Mão 3D desativada por decisão de projeto; o código continua no repositório e pode ser religado em
+`manumetria/interface/opcoes.py` (`MAO_3D_ATIVA = True`). Os cálculos são os mesmos da 1.4.0.
+
+- Tela de avaliação só com a câmera, em toda a área do palco: sem a miniatura da mão 3D, sem os botões
+  "Câmera / Modelo 3D", sem a legenda das cores e a dica "arraste para girar". As cores por dedo continuam
+  nos cartões dos dedos e no painel.
+- Com a mão 3D desligada, o OpenGL não é carregado: o sistema abre mesmo sem suporte a OpenGL.
+- README, INSTALACAO.md, textos das Configurações e dicas da tela sem a mão 3D; print da tela de avaliação
+  refeito. A placa de vídeo com OpenGL saiu dos requisitos.
+- Novo teste `tests/test_interruptor_mao3d.py` (tela de avaliação com a mão 3D desligada e ligada).
+
 ## 1.4.2 — 18/11/2026
 
 Acabamento dos textos. Os cálculos são os mesmos da 1.4.0.

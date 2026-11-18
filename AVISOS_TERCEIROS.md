@@ -11,8 +11,8 @@ instalação. Cada componente continua sob a licença do seu autor.
 | [PyQt5](https://www.riverbankcomputing.com/software/pyqt/) (Riverbank Computing) | 5.15.11 | GPL v3 (ou licença comercial da Riverbank) | interface gráfica |
 | Qt 5 (pacote `PyQt5-Qt5`, The Qt Company) | 5.15.2 | LGPL v3 | biblioteca gráfica usada pelo PyQt5 |
 | PyQt5-sip | 12.20.0 | BSD-2-Clause | ligação Python/C++ do PyQt5 |
-| [pyqtgraph](https://www.pyqtgraph.org/) | 0.14.0 | MIT | gráficos e cena 3D (OpenGL) |
-| [PyOpenGL](https://github.com/mcfletch/pyopengl) | 3.1.10 | BSD | acesso ao OpenGL para a cena 3D |
+| [pyqtgraph](https://www.pyqtgraph.org/) | 0.14.0 | MIT | gráficos (e a cena 3D da mão 3D, desativada nesta versão) |
+| [PyOpenGL](https://github.com/mcfletch/pyopengl) | 3.1.10 | BSD | acesso ao OpenGL para a cena 3D; instalado, mas só é usado se a mão 3D for religada (`MAO_3D_ATIVA`) |
 | [NumPy](https://numpy.org/) | 2.4.6 | BSD-3-Clause (com partes 0BSD, MIT, Zlib, CC0-1.0) | cálculo |
 | [MediaPipe](https://github.com/google-ai-edge/mediapipe) (Google) | 1.0.1 | Apache 2.0 | detecção dos 21 pontos da mão |
 | Modelo `hand_landmarker.task` (Google, MediaPipe) | float16, "latest" | Apache 2.0 | modelo de detecção da mão (baixado na instalação) |

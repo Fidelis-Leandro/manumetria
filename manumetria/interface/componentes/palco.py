@@ -1,12 +1,11 @@
-"""Palco da avaliação: mão 3D, vista principal + miniatura e a barra acima dele."""
+"""Palco da avaliação: a câmera (e, com opcoes.MAO_3D_ATIVA, a mão 3D em miniatura) e a barra
+acima dele. O OpenGL e o módulo mao3d só são importados ao criar a Hand3D."""
 
 from PyQt5 import QtCore, QtGui, QtWidgets
 
 import pyqtgraph as pg
-import pyqtgraph.opengl as gl
 
 from manumetria.calculo import geometria, goniometria
-from manumetria.interface.componentes import mao3d
 from manumetria.interface.tema import (ACCENT, MUTED, ON_WARN, SURFACE, TEXT, VIEW_ACCENT, VIEW_BG,
                                        VIEW_GRADE_COLOR, VIEW_MUTED, VIEW_TEXT, WARN, button, label,
                                        set_button_icon, swatch)
@@ -20,6 +19,10 @@ class Hand3D:
     tela de avaliação."""
 
     def __init__(self):
+        # import tardio: sem a mão 3D, o app abre mesmo sem suporte a OpenGL
+        import pyqtgraph.opengl as gl
+        from manumetria.interface.componentes import mao3d
+
         self.view = gl.GLViewWidget()
         self.view.setBackgroundColor(VIEW_BG)     # escuro nos dois temas (área de vídeo)
         grid = gl.GLGridItem()
@@ -103,11 +106,12 @@ class ViewStage(QtWidgets.QWidget):
     """Duas vistas sempre visíveis: uma ocupa o palco, a outra fica em
     miniatura no canto. Clique na miniatura = trocar. Os widgets nunca mudam
     de pai (o OpenGL não gosta disso): só trocam de posição e tamanho.
+    Sem gl_view (mão 3D desligada, opcoes.MAO_3D_ATIVA), a câmera ocupa o palco inteiro.
     Os rótulos sobre a imagem usam as cores VIEW_* (o palco é escuro nos dois temas)."""
 
     swapped = QtCore.pyqtSignal(bool)          # True = câmera é a vista principal
 
-    def __init__(self, gl_view):
+    def __init__(self, gl_view=None):
         super().__init__()
         self.setAttribute(QtCore.Qt.WA_StyledBackground, True)
         self.setStyleSheet("background: #000;")
@@ -116,27 +120,29 @@ class ViewStage(QtWidgets.QWidget):
         self.cam = QtWidgets.QLabel("Aguardando câmera…", self)
         self.cam.setAlignment(QtCore.Qt.AlignCenter)
         self.cam.setSizePolicy(QtWidgets.QSizePolicy.Ignored, QtWidgets.QSizePolicy.Ignored)
-        self.gl_frame = QtWidgets.QFrame(self)
-        lay = QtWidgets.QVBoxLayout(self.gl_frame)
-        lay.setContentsMargins(0, 0, 0, 0)
-        lay.addWidget(gl_view)
         self.gl = gl_view
-        for w in (self.cam, self.gl):
-            w.installEventFilter(self)
+        self.gl_frame = self.mini_caption = self.legend = None
         self._qimage = None
+        if gl_view is not None:
+            self.gl_frame = QtWidgets.QFrame(self)
+            lay = QtWidgets.QVBoxLayout(self.gl_frame)
+            lay.setContentsMargins(0, 0, 0, 0)
+            lay.addWidget(gl_view)
+            for w in (self.cam, self.gl):
+                w.installEventFilter(self)
 
-        # nome da miniatura + como trocar
-        self.mini_caption = QtWidgets.QLabel(self)
-        self.mini_caption.setStyleSheet(f"color: {VIEW_TEXT}; font-size: 12px; background: rgba(0,0,0,170);"
-                                        " padding: 3px 8px; border-radius: 4px;")
-        self.legend = QtWidgets.QLabel(self)
-        self.legend.setStyleSheet(f"color: {VIEW_MUTED}; font-size: 12px; background: rgba(11,17,24,200);"
-                                  " padding: 5px 9px; border-radius: 4px;")
-        grade = VIEW_GRADE_COLOR
-        self.legend.setText(f"Cor das articulações = % do normal do dedo na sessão &nbsp;&nbsp;"
-                            f"{swatch(grade['ruim'])} abaixo de 50% &nbsp; {swatch(grade['regular'])} 50 a 75%"
-                            f" &nbsp; {swatch(grade['bom'])} acima de 75% &nbsp; {swatch('#ccd1d9')} sem dados"
-                            f"<br>Passe o mouse sobre uma articulação para ver o nome e os valores")
+            # nome da miniatura + como trocar
+            self.mini_caption = QtWidgets.QLabel(self)
+            self.mini_caption.setStyleSheet(f"color: {VIEW_TEXT}; font-size: 12px; background: rgba(0,0,0,170);"
+                                            " padding: 3px 8px; border-radius: 4px;")
+            self.legend = QtWidgets.QLabel(self)
+            self.legend.setStyleSheet(f"color: {VIEW_MUTED}; font-size: 12px; background: rgba(11,17,24,200);"
+                                      " padding: 5px 9px; border-radius: 4px;")
+            grade = VIEW_GRADE_COLOR
+            self.legend.setText(f"Cor das articulações = % do normal do dedo na sessão &nbsp;&nbsp;"
+                                f"{swatch(grade['ruim'])} abaixo de 50% &nbsp; {swatch(grade['regular'])} 50 a 75%"
+                                f" &nbsp; {swatch(grade['bom'])} acima de 75% &nbsp; {swatch('#ccd1d9')} sem dados"
+                                f"<br>Passe o mouse sobre uma articulação para ver o nome e os valores")
         # faixa de aviso curta, sem escurecer a imagem (ex.: "vire a palma")
         self.banner = QtWidgets.QLabel(self)
         self.banner.setAlignment(QtCore.Qt.AlignCenter)
@@ -157,6 +163,8 @@ class ViewStage(QtWidgets.QWidget):
 
     # ------------------------------------------------------------ interação
     def eventFilter(self, obj, ev):
+        if self.gl is None:
+            return False
         mini = self.gl if self.camera_main else self.cam
         if obj is mini and ev.type() == QtCore.QEvent.MouseButtonPress:
             self.swap()
@@ -170,7 +178,7 @@ class ViewStage(QtWidgets.QWidget):
     def set_camera_main(self, camera_main):
         """True: câmera grande e mão 3D na miniatura; False: o contrário.
         Emite `swapped`."""
-        if camera_main == self.camera_main:
+        if camera_main == self.camera_main or self.gl is None:
             return
         self.camera_main = camera_main
         self._apply_styles()
@@ -219,6 +227,9 @@ class ViewStage(QtWidgets.QWidget):
 
     # ---------------------------------------------------------------- layout
     def _apply_styles(self):
+        if self.gl is None:
+            self.cam.setStyleSheet(f"background: #000; color: {VIEW_MUTED}; font-size: 14px; border: none;")
+            return
         mini_border = f"border: 2px solid {VIEW_ACCENT}; border-radius: 6px;"
         self.cam.setStyleSheet(f"background: #000; color: {VIEW_MUTED}; font-size: 14px;"
                                + (mini_border if not self.camera_main else "border: none;"))
@@ -233,18 +244,22 @@ class ViewStage(QtWidgets.QWidget):
 
     def _layout(self):
         r = self.rect()
-        main, mini = (self.cam, self.gl_frame) if self.camera_main else (self.gl_frame, self.cam)
-        main.setGeometry(r)
-        mw = max(200, int(r.width() * 0.27))
-        mh = int(mw * 0.75)
-        mini.setGeometry(r.width() - mw - 14, r.height() - mh - 14, mw, mh)
-        main.lower()
-        mini.raise_()
-        self.mini_caption.adjustSize()
-        self.mini_caption.move(mini.x() + 8, mini.y() + 8)
-        self.legend.adjustSize()
-        self.legend.move(12, r.height() - self.legend.height() - 12)
-        self.legend.setVisible(not self.camera_main)
+        if self.gl is None:
+            self.cam.setGeometry(r)
+            self.cam.lower()
+        else:
+            main, mini = (self.cam, self.gl_frame) if self.camera_main else (self.gl_frame, self.cam)
+            main.setGeometry(r)
+            mw = max(200, int(r.width() * 0.27))
+            mh = int(mw * 0.75)
+            mini.setGeometry(r.width() - mw - 14, r.height() - mh - 14, mw, mh)
+            main.lower()
+            mini.raise_()
+            self.mini_caption.adjustSize()
+            self.mini_caption.move(mini.x() + 8, mini.y() + 8)
+            self.legend.adjustSize()
+            self.legend.move(12, r.height() - self.legend.height() - 12)
+            self.legend.setVisible(not self.camera_main)
         if self.banner.isVisible():
             self.banner.adjustSize()
             self.banner.move((r.width() - self.banner.width()) // 2, 14)
@@ -255,44 +270,52 @@ class ViewStage(QtWidgets.QWidget):
             self.overlay_card.adjustSize()
             self.overlay_card.move((r.width() - ow) // 2, (r.height() - self.overlay_card.height()) // 2)
         for w in (self.mini_caption, self.legend, self.banner, self.overlay):
-            w.raise_()
+            if w is not None:
+                w.raise_()
 
 
 class StageToolbar(QtWidgets.QWidget):
     """Barra fixa acima do palco: qual vista é a principal, centralizar o 3D
-    e tela cheia (fora da imagem, sem cobrir a mão 3D)."""
+    e tela cheia (fora da imagem, sem cobrir a mão 3D). Com with_3d=False
+    (opcoes.MAO_3D_ATIVA), só tela cheia e dicas."""
 
-    def __init__(self):
+    def __init__(self, with_3d=True):
         super().__init__()
         self.setFixedHeight(44)
         h = QtWidgets.QHBoxLayout(self)
         h.setContentsMargins(0, 0, 0, 6)
         h.setSpacing(8)
-        self.btn_3d = button("Modelo 3D", "cube", "quiet", checkable=True)
-        self.btn_cam = button("Câmera", "camera", "quiet", checkable=True)
-        group = QtWidgets.QButtonGroup(self)
-        group.setExclusive(True)
-        for b in (self.btn_3d, self.btn_cam):
-            group.addButton(b)
-            h.addWidget(b)
-        self.btn_3d.setChecked(True)
-        h.addSpacing(10)
-        self.hint = label("Arraste para girar  ·  roda do mouse para aproximar", 12, MUTED)
-        # pode ser cortada: com a janela estreita, a dica não deve alargar a tela inteira
-        self.hint.setSizePolicy(QtWidgets.QSizePolicy.Ignored, QtWidgets.QSizePolicy.Preferred)
-        h.addWidget(self.hint, stretch=1)
+        self.btn_3d = self.btn_cam = self.hint = self.btn_center = None
+        if with_3d:
+            self.btn_3d = button("Modelo 3D", "cube", "quiet", checkable=True)
+            self.btn_cam = button("Câmera", "camera", "quiet", checkable=True)
+            group = QtWidgets.QButtonGroup(self)
+            group.setExclusive(True)
+            for b in (self.btn_3d, self.btn_cam):
+                group.addButton(b)
+                h.addWidget(b)
+            self.btn_3d.setChecked(True)
+            h.addSpacing(10)
+            self.hint = label("Arraste para girar  ·  roda do mouse para aproximar", 12, MUTED)
+            # pode ser cortada: com a janela estreita, a dica não deve alargar a tela inteira
+            self.hint.setSizePolicy(QtWidgets.QSizePolicy.Ignored, QtWidgets.QSizePolicy.Preferred)
+            h.addWidget(self.hint, stretch=1)
         h.addStretch()
-        self.btn_center = button("Centralizar", "crosshair", "quiet")
-        self.btn_center.setToolTip("Volta o modelo 3D para a posição de frente")
+        if with_3d:
+            self.btn_center = button("Centralizar", "crosshair", "quiet")
+            self.btn_center.setToolTip("Volta o modelo 3D para a posição de frente")
         self.btn_full = button("Tela cheia", "maximize", "quiet")
         self.btn_tips = button("Dicas", "help", "quiet")
         self.btn_tips.setToolTip("Mostra de novo as dicas sobre esta tela")
-        h.addWidget(self.btn_center)
+        if self.btn_center is not None:
+            h.addWidget(self.btn_center)
         h.addWidget(self.btn_full)
         h.addWidget(self.btn_tips)
 
     def sync(self, camera_main):
         """Marca o botão da vista principal; o centralizar e a dica só valem para o 3D."""
+        if self.btn_3d is None:
+            return
         (self.btn_cam if camera_main else self.btn_3d).setChecked(True)
         self.hint.setVisible(not camera_main)
         self.btn_center.setVisible(not camera_main)

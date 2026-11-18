@@ -13,6 +13,7 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 from manumetria.calculo import filtros
 from manumetria.dados import configuracoes as cfgmod, recalculo
 from manumetria.formato import fmt_datetime, fmt_num, fmt_pct
+from manumetria.interface import opcoes
 from manumetria.interface.componentes.cabecalho import ScreenHeader
 from manumetria.interface.componentes.dialogos import ConfirmDialog, DIALOG_CSS
 from manumetria.interface.glossario import explain
@@ -183,8 +184,9 @@ class SettingsScreen(QtWidgets.QWidget):
         scale_row.addStretch()
         f.addRow(label("Tamanho", 13, MUTED), scale_row)
         theme_hint = label("Tamanho aumenta texto, botões e ícones juntos. As trocas valem ao reiniciar "
-                           "o programa. A área da câmera e do modelo 3D continua escura nos dois temas, "
-                           "como uma tela de vídeo.", 12, MUTED)
+                           "o programa. A área da câmera"
+                           + (" e do modelo 3D" if opcoes.MAO_3D_ATIVA else "")
+                           + " continua escura nos dois temas, como uma tela de vídeo.", 12, MUTED)
         theme_hint.setWordWrap(True)
         f.addRow("", theme_hint)
 
@@ -217,8 +219,9 @@ class SettingsScreen(QtWidgets.QWidget):
             "Filtro aplicado aos ângulos de cada articulação: reduz a tremedeira "
             "da câmera, mas atrasa um pouco o sinal (EMA + Kalman: cerca de "
             f"{fmt_num(filtros.atraso_quadros(filtros.registro(filtros.CASCATA)), 0)} quadros). Padrão: "
-            f"{filtros.MODOS[filtros.PADRAO]} só na exibição ao vivo (valor \"Agora\", gráfico do TAM e dica "
-            "da mão 3D); as medidas da avaliação usam os dados brutos. Com a caixa marcada, o filtro entra "
+            f"{filtros.MODOS[filtros.PADRAO]} só na exibição ao vivo (valor \"Agora\""
+            + (", gráfico do TAM e dica da mão 3D" if opcoes.MAO_3D_ATIVA else " e gráfico do TAM")
+            + "); as medidas da avaliação usam os dados brutos. Com a caixa marcada, o filtro entra "
             "também nas medidas e achata os picos (menos flexão máxima, velocidade de pico e repetições). "
             "Vale para as avaliações novas; cada avaliação guarda o filtro usado, e o recálculo usa sempre "
             "o da própria avaliação.", 12, MUTED)

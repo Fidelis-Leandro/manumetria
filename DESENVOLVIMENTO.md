@@ -109,7 +109,8 @@ pastas, docstrings e comentários, em português.
 | `interface/icones.py` | ícones desenhados em SVG |
 | `interface/glossario.py` | explicação de cada medida (dica ao passar o mouse e Ajuda) |
 | `interface/telas/` | uma tela por arquivo: pacientes, ficha, avaliação, relatório, configurações, ajuda |
-| `interface/componentes/` | partes das telas: palco, mão 3D procedural (`mao3d.py`: cilindros, esferas e palma gerados a partir dos 21 pontos), painel do dedo (`painel.py`), peças pequenas (`pecas.py`), mapa da evolução (`mapa.py`), gráfico, barra do topo, dicas, diálogos |
+| `interface/opcoes.py` | opções fixas no código: `MAO_3D_ATIVA` (mão 3D desligada; veja "Mão 3D desligada" abaixo) |
+| `interface/componentes/` | partes das telas: palco, mão 3D procedural (`mao3d.py`: cilindros, esferas e palma gerados a partir dos 21 pontos; só carregado com `MAO_3D_ATIVA`), painel do dedo (`painel.py`), peças pequenas (`pecas.py`), mapa da evolução (`mapa.py`), gráfico, barra do topo, dicas, diálogos |
 | `versao.py` | versão do ManuMetria e identificação do método dos ângulos, gravadas em cada avaliação |
 
 **Testes** — pasta `tests/`: `testar.py` (roda todos os testes), `test_*.py` e `dados/`
@@ -117,7 +118,8 @@ pastas, docstrings e comentários, em português.
 completo dela). `test_arquitetura.py` confere as camadas; `test_reorganizacao.py`, que todos os números da
 gravação de referência continuam idênticos; `test_banco.py`, a migração, o código fixo das avaliações e a
 gravação dos pontos; `test_pastas.py`, as pastas do banco e o logotipo; `test_dataset.py`, o dataset para
-pesquisa (com `--copia-do-banco` também exporta uma CÓPIA de `dados_locais`). O `test_dataset.py` relê os
+pesquisa (com `--copia-do-banco` também exporta uma CÓPIA de `dados_locais`); `test_interruptor_mao3d.py`,
+a tela de avaliação com a mão 3D desligada e ligada. O `test_dataset.py` relê os
 arquivos com o pandas, que é só de desenvolvimento:
 `.venv\Scripts\python.exe -m pip install -r requirements-dev.txt` (sem ele, usa o módulo csv). Nenhum
 teste toca em `dados_locais`: tudo roda em pastas temporárias, e os pontos de um banco temporário ficam
@@ -186,7 +188,7 @@ com `SCHEMA_VERSION + 1`.
   padrão EMA + Kalman; método e origem em [docs/METODOLOGIA.md](docs/METODOLOGIA.md)): por padrão vale SÓ
   PARA A EXIBIÇÃO AO VIVO. O `Avaliador` aplica o filtro logo depois do cálculo e do
   descarte e, no mesmo quadro (`_update_session`), entrega à `Session` os dados brutos
-  e guarda os suavizados em `av.display` (valor "Agora", dica da mão 3D) e
+  e guarda os suavizados em `av.display` (valor "Agora"; dica da mão 3D, se ligada) e
   `av.display_history` (gráfico do TAM). Com "Aplicar a suavização também nas medidas"
   (`suavizacao_medidas` em Configurações; `nas_medidas` no registro), a `Session`
   recebe os suavizados. Motivo do padrão: o filtro achata os picos (tabela em
@@ -217,6 +219,11 @@ com `SCHEMA_VERSION + 1`.
 - Textos da interface em português, sem emojis.
 - A mão 3D é gerada pelo próprio código (sem modelo de terceiros). A cor de cada
   articulação segue a mesma regra dos cartões dos dedos (`goniometria.grade`).
+- **Mão 3D desligada**: por decisão de projeto, a mão 3D está desligada pela constante
+  `MAO_3D_ATIVA = False` em `manumetria/interface/opcoes.py` (fixa no código, fora das Configurações).
+  Desligada, a tela de avaliação mostra só a câmera e nem importa o `mao3d.py` nem o OpenGL (import tardio
+  em `palco.Hand3D`). Para religar, troque para `True`, rode `tests	estar.py` e volte a documentar a mão
+  3D no README, na Ajuda e no INSTALACAO.md. Detalhes em [docs/ARQUITETURA.md](docs/ARQUITETURA.md).
 - Bibliotecas de terceiros e licenças: `AVISOS_TERCEIROS.md`.
 
 ## Pacote para o registro de software (INPI)

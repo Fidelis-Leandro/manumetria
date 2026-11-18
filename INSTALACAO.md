@@ -69,7 +69,7 @@ Esperado: `Python 3.11.x`.
 Esperado: termina sem `ERROR`. São cerca de 300 MB (mediapipe, opencv, PyQt5). Confira:
 
 ```powershell
-.venv\Scripts\python.exe -c "import PyQt5, pyqtgraph, OpenGL, numpy, mediapipe, cv2; print('ok')"
+.venv\Scripts\python.exe -c "import PyQt5, pyqtgraph, numpy, mediapipe, cv2; print('ok')"
 ```
 
 ### 4. Baixar o modelo de detecção da mão (MediaPipe)
@@ -106,8 +106,8 @@ Esperado: EX-001 (5 avaliações), João (8) e Maria (9). Rodar de novo não dup
 
 Ou, por dois cliques: `Abrir sistema.bat` / `Abrir simulacao.bat` (abrem sem janela de terminal).
 
-Esperado: a janela "ManuMetria" com a lista de pacientes. Na tela de avaliação aparece a mão 3D (esferas
-nas articulações, coloridas conforme o % do normal de cada dedo). O uso está descrito em
+Esperado: a janela "ManuMetria" com a lista de pacientes. Na tela de avaliação aparece a imagem da câmera
+(ou da mão simulada) e um cartão por dedo, colorido conforme o % do normal. O uso está descrito em
 [Como usar, no README.md](README.md#como-usar).
 
 ---
@@ -121,7 +121,6 @@ nas articulações, coloridas conforme o % do normal de cada dedo). O uso está 
 | `ImportError: DLL load failed` ao importar `mediapipe` ou `cv2` | Instalar o *Microsoft Visual C++ Redistributable* (x64): `winget install -e --id Microsoft.VCRedist.2015+.x64`. |
 | O `.bat` abre e fecha, ou a janela não aparece | Rode pelo terminal para ver a mensagem: `.venv\Scripts\python.exe sistema.py --sim`. |
 | `não consegui abrir a câmera 0` | Outra câmera: `sistema.py --cam 1`. Feche outros programas que usam a câmera (Teams, Zoom). Verifique a permissão de câmera do Windows (Configurações > Privacidade > Câmera). |
-| Erro de OpenGL / tela 3D preta | Atualize o driver de vídeo (é preciso OpenGL 2.0 ou superior). |
 | Download do `hand_landmarker.task` falha | Baixe manualmente de `https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/latest/hand_landmarker.task` e coloque em `manumetria\recursos\`. |
 | A interface aparece muito pequena ou grande | Em Configurações > Interface > Tamanho (vale ao reiniciar). |
 

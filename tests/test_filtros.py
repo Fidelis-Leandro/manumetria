@@ -243,7 +243,7 @@ for raw_a, given, smooth, session_j, shown, hist_tam, sess_tam in watch(False):
     ok_hist &= abs(hist_tam - smooth["index"].sum()) < 1e-9 and abs(sess_tam - raw_a["index"].sum()) < 1e-9
     differ += not np.allclose(shown, session_j)
 n = len(watch(False))
-check("padrão: a tela recebe os valores suavizados (Agora, dica da mão 3D)", ok_in and ok_tela and n > 100,
+check("padrão: a tela recebe os valores suavizados (Agora e gráfico)", ok_in and ok_tela and n > 100,
       f"{n} quadros")
 check("padrão: a Session recebe os dados brutos", ok_brutos and differ > 0.9 * n,
       f"{differ} quadros com exibição diferente da medida")

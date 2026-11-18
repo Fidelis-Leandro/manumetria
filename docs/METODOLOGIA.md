@@ -38,7 +38,7 @@ O que o sistema faz com os ângulos de cada quadro, nesta ordem:
 
 ### Por que as medidas usam os dados brutos
 
-**Por padrão, o filtro vale só para a exibição ao vivo** (valor "Agora" das articulações, dica da mão 3D e
+**Por padrão, o filtro vale só para a exibição ao vivo** (valor "Agora" das articulações e
 gráfico "TAM nos últimos 20 s"). **Todas as medidas da sessão usam os dados brutos** (máximos, mínimos,
 déficits, TAM ativo, % do normal, repetições, velocidades, SPARC, independência, PDF e CSV), iguais às do
 modo Desligada. Motivo: a suavização **achata os picos**. Na gravação de referência (mão saudável),

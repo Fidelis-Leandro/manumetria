@@ -62,7 +62,7 @@ def main():
     win = AppWindow(make_source_factory(args), **kwargs)
     win.show()
     code = app.exec_()
-    # destrói a janela (OpenGL, prévia do relatório...) enquanto o QApplication existe;
+    # destrói a janela (prévia do relatório, OpenGL se a mão 3D estiver ligada...) enquanto o QApplication existe;
     # deixar isso para o encerramento do Python derrubava o processo ao sair (~1 em 3)
     sip.delete(win)
     sys.exit(code)

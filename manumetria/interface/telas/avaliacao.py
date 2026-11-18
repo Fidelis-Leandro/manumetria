@@ -20,7 +20,7 @@ from manumetria.calculo import filtros, geometria, goniometria, medidas, repetic
 from manumetria.captura.qualidade import CaptureQuality
 from manumetria.dados import configuracoes as cfgmod
 from manumetria.formato import fmt_num
-from manumetria.interface.componentes import mao3d
+from manumetria.interface import opcoes
 from manumetria.interface.componentes.dialogos import ConfirmDialog
 from manumetria.interface.componentes.grafico import TamChart
 from manumetria.interface.componentes.guia import GuidedTour
@@ -41,7 +41,7 @@ PHASE_TITLES = {"preparacao": "Preparação", "calibracao": "Calibração", "ava
 
 
 class EvaluationScreen(QtWidgets.QWidget):
-    """Tela de avaliação: palco (câmera e mão 3D), painel do dedo, gráfico e ações.
+    """Tela de avaliação: palco (câmera; mão 3D com opcoes.MAO_3D_ATIVA), painel do dedo, gráfico e ações.
     Lê a fonte a cada tick(), passa o quadro ao motor (self.av) e mostra o que
     ele decide."""
 
@@ -57,8 +57,11 @@ class EvaluationScreen(QtWidgets.QWidget):
         self.source = None
         self.source_name = ""
         self.patient = {}
-        self.hand3d = Hand3D()                   # criada uma vez só (OpenGL)
-        self.hand3d.joint_info = self._joint_info
+        # mão 3D só com opcoes.MAO_3D_ATIVA (Hand3D importa o OpenGL só ao ser criada)
+        self.hand3d = None
+        if opcoes.MAO_3D_ATIVA:
+            self.hand3d = Hand3D()               # criada uma vez só (OpenGL)
+            self.hand3d.joint_info = self._joint_info
         self.selected = "index"
         self.pastas = None             # pastas do banco aberto (a janela preenche)
         self.av = Avaliador()
@@ -79,9 +82,9 @@ class EvaluationScreen(QtWidgets.QWidget):
         body.setSpacing(10)
         stage_box = QtWidgets.QVBoxLayout()
         stage_box.setSpacing(0)
-        self.toolbar = StageToolbar()
+        self.toolbar = StageToolbar(with_3d=self.hand3d is not None)
         stage_box.addWidget(self.toolbar)
-        self.stage = ViewStage(self.hand3d.view)
+        self.stage = ViewStage(self.hand3d.view if self.hand3d is not None else None)
         stage_box.addWidget(self.stage, stretch=1)
         body.addLayout(stage_box, stretch=1)
         self.panel = self._build_panel()
@@ -90,11 +93,12 @@ class EvaluationScreen(QtWidgets.QWidget):
         self.bottom = self._build_bottom()
         root.addWidget(self.bottom)
 
-        self.toolbar.btn_3d.clicked.connect(lambda: self.stage.set_camera_main(False))
-        self.toolbar.btn_cam.clicked.connect(lambda: self.stage.set_camera_main(True))
-        self.stage.swapped.connect(self.toolbar.sync)
-        self.toolbar.sync(self.stage.camera_main)
-        self.toolbar.btn_center.clicked.connect(self.hand3d.reset_camera)
+        if self.hand3d is not None:
+            self.toolbar.btn_3d.clicked.connect(lambda: self.stage.set_camera_main(False))
+            self.toolbar.btn_cam.clicked.connect(lambda: self.stage.set_camera_main(True))
+            self.stage.swapped.connect(self.toolbar.sync)
+            self.toolbar.sync(self.stage.camera_main)
+            self.toolbar.btn_center.clicked.connect(self.hand3d.reset_camera)
         self.toolbar.btn_full.clicked.connect(self.toggle_expanded)
         self.toolbar.btn_tips.clicked.connect(lambda: self.show_tips())
         self.expanded = False
@@ -348,12 +352,19 @@ class EvaluationScreen(QtWidgets.QWidget):
     def _tips(self):
         grade = (f"{swatch(POOR)} abaixo de 50%, {swatch(FAIR)} de 50 a 75% e "
                  f"{swatch(GOOD)} acima de 75%")
+        if self.hand3d is not None:
+            stage_tip = (self.stage, "Câmera e mão 3D",
+                         "A vista grande mostra a câmera e a miniatura, a mão em 3D. <b>Clique na miniatura</b> "
+                         "para trocar as duas. No 3D, arraste para girar e use a roda do mouse para aproximar. "
+                         f"As esferas das articulações têm a cor do dedo ({grade}); <b>passe o mouse</b> "
+                         "sobre uma delas para ver o nome e os valores.")
+        else:
+            stage_tip = (self.stage, "Câmera",
+                         "Mostra a imagem da câmera com os pontos da mão. Mantenha a mão inteira no quadro, "
+                         "com a palma voltada para a câmera, a cerca de 50 cm. <b>Tela cheia</b> esconde o "
+                         "painel e o gráfico.")
         return [
-            (self.stage, "Câmera e mão 3D",
-             "A vista grande mostra a câmera e a miniatura, a mão em 3D. <b>Clique na miniatura</b> "
-             "para trocar as duas. No 3D, arraste para girar e use a roda do mouse para aproximar. "
-             f"As esferas das articulações têm a cor do dedo ({grade}); <b>passe o mouse</b> "
-             "sobre uma delas para ver o nome e os valores."),
+            stage_tip,
             (list(self.chips.values()), "Um cartão por dedo",
              "Cada cartão mostra quantos movimentos o dedo fez e o % do normal da amplitude "
              f"total (TAM): {grade}. <b>Clique num dedo</b> para ver os detalhes dele."),
@@ -379,7 +390,7 @@ class EvaluationScreen(QtWidgets.QWidget):
                        and not av.paused and not av.recalibrating)
         if paused_here:
             self.toggle_pause()
-        illustrative = self.source is None       # câmera fechada: mão 3D de exemplo
+        illustrative = self.source is None and self.hand3d is not None   # câmera fechada: mão 3D de exemplo
         if illustrative:
             self.hand3d.show_neutral()
 
@@ -418,7 +429,7 @@ class EvaluationScreen(QtWidgets.QWidget):
         distance = self.distance.update(raw)
         self.stage.show_banner("Vire a palma para a câmera" if passo.state == "vista"
                                else DISTANCE_TEXT.get(distance))
-        if passo.pose is not None:
+        if passo.pose is not None and self.hand3d is not None:
             self.hand3d.update(geometria.world_to_gl(passo.pose["world"]))
         self._show_message()
         if av.paused:
@@ -524,7 +535,11 @@ class EvaluationScreen(QtWidgets.QWidget):
     def _color_hand(self):
         """Mão 3D: as articulações de cada dedo com a cor da classificação do
         dedo; o selecionado forte, os outros em tom pastel da mesma cor. Cores
-        do palco (VIEW_*): o fundo do 3D é escuro nos dois temas."""
+        do palco (VIEW_*): o fundo do 3D é escuro nos dois temas. Sem a mão 3D,
+        não faz nada (os cartões dos dedos têm as próprias cores)."""
+        if self.hand3d is None:
+            return
+        from manumetria.interface.componentes import mao3d   # tardio: só com a mão 3D
         skin = np.array(mao3d.NEUTRAL_COLOR)
         colors = {}
         for f in goniometria.FINGERS:

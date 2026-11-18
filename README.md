@@ -17,8 +17,7 @@ ao vivo, guarda cada avaliação na ficha do paciente e acompanha a evolução a
 
 - **Cadastro e ficha de pacientes**: dados clínicos, situação (em tratamento ou alta) e lista de
   avaliações.
-- **Avaliação ao vivo** com a imagem da câmera e uma **mão 3D colorida**, em que cada articulação mostra a
-  situação do seu dedo.
+- **Avaliação ao vivo** com a imagem da câmera e um cartão por dedo, na cor da situação do dedo.
 - **Medidas por articulação e por dedo**: flexão, amplitude total, % do normal, repetições, velocidade,
   independência dos dedos e outras.
 - **Evolução e comparação entre avaliações**, com o **erro de medida** estimado pelo reteste, para saber se
@@ -31,7 +30,7 @@ ao vivo, guarda cada avaliação na ficha do paciente e acompanha a evolução a
 *Lista de pacientes: situação, % do normal, tendência e última avaliação.*
 
 ![Tela de avaliação com a mão simulada](docs/telas/avaliacao.png)
-*Avaliação ao vivo (modo simulação): imagem da câmera, mão 3D na miniatura e medidas do dedo escolhido.*
+*Avaliação ao vivo (modo simulação): imagem da câmera, cartões dos dedos e medidas do dedo escolhido.*
 
 ![Ficha do paciente com o gráfico de evolução](docs/telas/ficha.png)
 *Ficha do paciente: resumo, lista de avaliações e evolução do TAM ativo com a faixa do erro de medida.*
@@ -43,7 +42,6 @@ Todas as telas mostram pacientes fictícios de demonstração.
 - Windows 10 ou 11, 64 bits.
 - Uma webcam comum (sem câmera, só o modo simulação).
 - Cerca de 1 GB de espaço livre.
-- Placa de vídeo com OpenGL 2.0 ou superior (qualquer computador recente).
 - Internet **só durante a instalação**. Depois, o sistema funciona sem internet.
 
 ## Instalação
@@ -68,9 +66,8 @@ Passo a passo detalhado e solução de problemas: [INSTALACAO.md](INSTALACAO.md)
 3. Posicione a mão do paciente com a **palma voltada para a câmera**, a cerca de 50 cm, com boa luz.
 4. **Calibração**: o sistema pede a mão aberta e parada por 2 segundos.
 5. Peça o movimento (por exemplo, abrir e fechar a mão o máximo possível, algumas vezes). Os cartões dos
-   dedos contam os movimentos ao vivo; clique num dedo para ver os detalhes. Os botões **Câmera** e
-   **Modelo 3D** trocam a imagem principal; na mão 3D, passe o mouse sobre uma articulação para ver os
-   valores.
+   dedos contam os movimentos ao vivo; clique num dedo para ver os detalhes. **Tela cheia** mostra só a
+   imagem da câmera.
 6. Clique em **Encerrar sessão**. No relatório, escreva as observações, use **Fazer reteste** quando quiser
    estimar o erro de medida e clique em **Salvar na ficha**.
 7. Clique em **Gerar PDF** para o relatório (ou **Exportar CSV** para os números).
@@ -86,14 +83,12 @@ conhecer o sistema, abra a ficha dos pacientes fictícios **João Pereira (fict�
 - **Flexão**: quanto cada articulação do dedo dobra, em graus. Valores negativos indicam hiperextensão.
 - **TAM** (*total active motion*, movimento ativo total): a soma do movimento das articulações de um dedo,
   descontando o que falta para esticar.
-- **% do normal**: o TAM do dedo comparado com o de uma mão sem limitação. Na tela e na mão 3D: vermelho
+- **% do normal**: o TAM do dedo comparado com o de uma mão sem limitação. Na tela: vermelho
   abaixo de 50%, amarelo de 50% até abaixo de 75% e verde a partir de 75%.
 - **Repetições**: quantas vezes o paciente fechou e abriu o dedo, classificadas em movimento, parcial e
   completa conforme a amplitude.
 - **Velocidade**: rapidez ao fechar e ao abrir o dedo, em graus por segundo.
 - **Independência**: quanto o dedo consegue se mover sem arrastar os outros junto.
-
-![Mão 3D da tela de avaliação: cada esfera é uma articulação medida, na cor do % do normal do dedo](docs/mao3d_procedural_vista.png)
 
 O sistema também calcula o déficit de extensão, o arco funcional, o escore de Strickland, a distância
 polpa–palma, a suavidade do movimento, sinais de fadiga, o tremor e a confiabilidade de cada avaliação.
