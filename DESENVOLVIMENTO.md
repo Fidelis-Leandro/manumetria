@@ -1,9 +1,11 @@
 # ManuMetria — desenvolvimento
 
 ManuMetria: avaliação cinemática da mão por visão computacional (webcam comum +
-MediaPipe, sem marcadores). Este arquivo é para quem for mexer no código; o uso
-e a instalação estão no README.md, e a arquitetura (camadas, responsabilidades e o
-caminho de um quadro) em [docs/ARQUITETURA.md](docs/ARQUITETURA.md).
+MediaPipe, sem marcadores). Este arquivo é para quem for mexer no código. O uso
+está no [README.md](README.md), a instalação em [INSTALACAO.md](INSTALACAO.md), o
+método de cálculo em [docs/METODOLOGIA.md](docs/METODOLOGIA.md), o histórico de
+versões em [CHANGELOG.md](CHANGELOG.md) e a arquitetura (camadas, responsabilidades e
+o caminho de um quadro) em [docs/ARQUITETURA.md](docs/ARQUITETURA.md).
 
 ## Como rodar
 
@@ -14,6 +16,10 @@ caminho de um quadro) em [docs/ARQUITETURA.md](docs/ARQUITETURA.md).
 .venv\Scripts\python.exe sistema.py --sim      (mão simulada, sem câmera)
 .venv\Scripts\python.exe sistema.py --help     (outras opções)
 ```
+
+  Opções: `--sim` mão simulada, `--cam 1` outra câmera, `--resolucao 1280x720`,
+  `--confianca 0.5` limiar do MediaPipe, `--banco outro.sqlite` outro banco,
+  `--replay ARQUIVO` toca uma gravação de pontos (.npz).
 
 - Pacientes fictícios de demonstração (EX-001, João e Maria): `.venv\Scripts\python.exe tools\criar_demonstracao.py`
 - Todos os testes automáticos: `.venv\Scripts\python.exe tests\testar.py`
@@ -39,8 +45,25 @@ caminho salvo é relativo à pasta dele (`caminhos.pastas_do_banco`). Todas as p
 
 ## Como o código está organizado
 
+Na raiz do projeto:
+
 ```
-sistema.py                ponto de entrada
+sistema.py               ponto de entrada (python sistema.py --help mostra as opções)
+manumetria/              o sistema, em camadas (docs/ARQUITETURA.md)
+tests/                   testes automáticos (tests	estar.py roda todos)
+tools/                   pacientes de demonstração, análise de gravações e pacote para o registro
+docs/                    metodologia, arquitetura, auditorias e imagens da documentação
+requirements.txt         pacotes do sistema
+requirements-dev.txt     só para os testes (pandas); não é preciso para usar o sistema
+Instalar sistema.bat     instalação completa no Windows
+Abrir sistema.bat        abre com a webcam
+Abrir simulacao.bat      abre com a mão simulada
+gerar_hash_registro.bat  pacote e hash SHA-512 para o registro de software (seção abaixo)
+```
+
+Dentro de `manumetria/`:
+
+```
 manumetria/
   caminhos.py versao.py formato.py      utilitários (não importam nenhuma camada)
   calculo/      goniometria, sinal, repeticoes, sessao, medidas, filtros, estabilizador, geometria
@@ -65,7 +88,7 @@ pastas, docstrings e comentários, em português.
 | `calculo/repeticoes.py` | `Rep` e `FingerTracker`: repetições e todas as métricas por dedo |
 | `calculo/sessao.py` | `Calibration` (sensibilidade) e `Session` (um tracker por dedo, independência) |
 | `calculo/medidas.py` | arco funcional, Strickland, polpa-palma, abertura dos dedos, tremor, confiabilidade, distância |
-| `calculo/filtros.py` | suavização: EMA, Kalman e EMA + Kalman, com os parâmetros do artigo EMA × Kalman |
+| `calculo/filtros.py` | suavização: EMA, Kalman e EMA + Kalman (parâmetros em docs/METODOLOGIA.md) |
 | `calculo/estabilizador.py` | segura falhas curtas do MediaPipe e fixa o lado da mão |
 | `calculo/geometria.py` | pontos da mão, mão sintética (simulação e testes), conversão para o 3D |
 | `captura/camera.py` | webcam + MediaPipe (thread), download do modelo, desenho do esqueleto |
@@ -120,7 +143,7 @@ chamado pelo `gerar_hash_registro.bat`).
    conhecida.
 6. Rode `tests\testar.py`. Se a conta de uma medida mudou, o `test_reorganizacao.py` falha de propósito:
    gere de novo `tests/dados/referencia_resultados.json`, documente a mudança em
-   `docs/AUDITORIA_CALCULOS.md` e suba `VERSAO` em `manumetria/versao.py` (e `GONIOMETRIA`, se mudou o
+   `docs/AUDITORIA_CALCULOS.md`, em `docs/METODOLOGIA.md` e no `CHANGELOG.md` e suba `VERSAO` em `manumetria/versao.py` (e `GONIOMETRIA`, se mudou o
    método dos ângulos): cada avaliação guarda a versão que a calculou.
 7. Para as avaliações já salvas ganharem a medida: Configurações > **Recalcular avaliações**
    (`manumetria/dados/recalculo.py`). Ele passa os pontos gravados pelo cálculo em uso, mostra o que
@@ -160,21 +183,20 @@ com `SCHEMA_VERSION + 1`.
 ## Combinados do projeto
 
 - As **medidas usam os dados brutos**. Suavização (`manumetria/calculo/filtros.py`,
-  padrão EMA + Kalman com os parâmetros do artigo EMA × Kalman): por padrão vale SÓ
+  padrão EMA + Kalman; método e origem em [docs/METODOLOGIA.md](docs/METODOLOGIA.md)): por padrão vale SÓ
   PARA A EXIBIÇÃO AO VIVO. O `Avaliador` aplica o filtro logo depois do cálculo e do
   descarte e, no mesmo quadro (`_update_session`), entrega à `Session` os dados brutos
   e guarda os suavizados em `av.display` (valor "Agora", dica da mão 3D) e
   `av.display_history` (gráfico do TAM). Com "Aplicar a suavização também nas medidas"
   (`suavizacao_medidas` em Configurações; `nas_medidas` no registro), a `Session`
-  recebe os suavizados, como no pipeline do artigo. Motivo do padrão: o filtro achata
-  os picos (na gravação de referência, -10 pp no TAM ativo do indicador e até -66% na
-  velocidade de pico; tabela no README). Com o padrão, os resultados
+  recebe os suavizados. Motivo do padrão: o filtro achata os picos (tabela em
+  docs/METODOLOGIA.md, conferida pelo `tests/test_auditoria.py`). Com o padrão, os resultados
   são idênticos aos do modo "Desligada" (há um teste para isso). Calibração, tremor
   e as medidas por pontos (abertura, polpa-palma) usam sempre os dados brutos. O filtro
   só usa a ordem dos quadros (nada de relógio): o recálculo tem de dar o mesmo resultado
   do ao vivo. Cada avaliação guarda `resultados["filtro"]` (modo, parâmetros e
   `nas_medidas`); o recálculo usa esse registro (sem registro: "Desligada"; sem
-  `nas_medidas`: dados brutos). Os parâmetros do artigo não devem ser mudados sem um
+  `nas_medidas`: dados brutos). Os parâmetros dos filtros não devem ser mudados sem um
   motivo documentado. A média de 8 quadros só decide QUANDO há repetição (e os instantes
   de início e fim, pelo critério da meia sensibilidade); amplitude, classificação, TAM no
   pico, excursão e velocidades saem dos dados brutos. A derivada de Savitzky–Golay (5
@@ -185,7 +207,7 @@ com `SCHEMA_VERSION + 1`.
   osso, recomendação ISB (Wu et al., 2005). Ao mudar essa conta, refaça a prova contra o
   JavaScript (docs/AUDITORIA_CALCULOS.md, seção 3) e o autoteste em `tests/test_auditoria.py`.
 - **Auditoria dos cálculos**: `docs/AUDITORIA_CALCULOS.md` e `tests/test_auditoria.py`. Todo
-  número afirmado num texto (README, Ajuda, PDF, dicionário de dados, comentário) precisa de
+  número afirmado num texto (README, METODOLOGIA, Ajuda, PDF, dicionário de dados, comentário) precisa de
   evidência no repositório (teste, gravação de referência) ou de fonte conferida; o teste confere
   os números citados e falha se um texto sem fonte voltar. Ao mudar uma conta, atualize o
   relatório e o teste. A auditoria da organização do código está em `docs/AUDITORIA_ORGANIZACAO.md`.
@@ -196,3 +218,16 @@ com `SCHEMA_VERSION + 1`.
 - A mão 3D é gerada pelo próprio código (sem modelo de terceiros). A cor de cada
   articulação segue a mesma regra dos cartões dos dedos (`goniometria.grade`).
 - Bibliotecas de terceiros e licenças: `AVISOS_TERCEIROS.md`.
+
+## Pacote para o registro de software (INPI)
+
+O `gerar_hash_registro.bat` (que chama `tools\gerar_hash_registro.py`) gera um ZIP só com o código-fonte e
+a documentação (sem `.git`, `.venv`, `__pycache__`, `dados_locais/`, relatórios, gravações nem o modelo
+baixado do MediaPipe), calcula o **SHA-512** do ZIP e salva o ZIP e um `.txt` com o hash, a data e a lista
+de arquivos na pasta **`REGISTRO_INPI`**, ao lado da pasta do projeto (fora do repositório).
+
+- Rode esse script **somente depois da aprovação final do orientador**, com a versão definitiva.
+- O ZIP gerado **nunca mais pode ser alterado**: qualquer mudança, mesmo de um caractere, muda o hash.
+  Não descompacte e recompacte; não renomeie arquivos dentro dele.
+- Guarde o ZIP e o `.txt` **em mais de um lugar** (por exemplo: HD externo, nuvem institucional e uma cópia
+  com o NIT).

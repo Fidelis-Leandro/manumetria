@@ -1,7 +1,7 @@
 """
 Auditoria dos cálculos: testes de resposta conhecida para cada medida, casos-limite,
 coerência entre o que é calculado, salvo, exportado e recalculado, e conferência dos números
-afirmados nos textos (README, Ajuda, PDF, dicionário de dados, comentários) contra a gravação
+afirmados nos textos (README, METODOLOGIA, Ajuda, PDF, dicionário de dados, comentários) contra a gravação
 de referência. Relatório completo: docs/AUDITORIA_CALCULOS.md.
 
     .venv\\Scripts\\python.exe tests\\test_auditoria.py
@@ -515,10 +515,10 @@ check("texto: tamanho da mão na imagem com mediana 0,27 (P10-P90 0,23-0,29)",
       round(np.median(sizes), 2) == 0.27 and round(np.percentile(sizes, 10), 2) == 0.23
       and round(np.percentile(sizes, 90), 2) == 0.29)
 
-# tabela da suavização no README (EMA + Kalman aplicada também nas medidas)
+# tabela da suavização em docs/METODOLOGIA.md (EMA + Kalman aplicada também nas medidas)
 from manumetria.calculo import filtros  # noqa: E402
 smooth = analisar(rows, filtro=filtros.registro(filtros.CASCATA, nas_medidas=True)).results(rows[-1]["t"], "g")["dedos"]
-readme = open(os.path.join(ROOT, "README.md"), encoding="utf-8").read()
+readme = open(os.path.join(ROOT, "docs", "METODOLOGIA.md"), encoding="utf-8").read()
 missing = []
 for f in goniometria.FINGERS:
     a, b = out["dedos"][f], smooth[f]
@@ -528,7 +528,7 @@ for f in goniometria.FINGERS:
     if line not in readme:
         missing.append(line)
 mcp = (out["dedos"]["index"]["articulacoes"][0]["max"], smooth["index"]["articulacoes"][0]["max"])
-check("README: tabela da suavização e MCP do indicador conferidas na gravação", not missing
+check("METODOLOGIA: tabela da suavização e MCP do indicador conferidas na gravação", not missing
       and f"{mcp[0]:.1f}° para {mcp[1]:.1f}°".replace(".", ",") in readme, f"{missing} {mcp}")
 
 # afirmações sem evidência no repositório, ou que não valem para o método de cálculo em uso
@@ -537,7 +537,8 @@ from manumetria.interface.telas import ajuda  # noqa: E402
 from manumetria.relatorios import pdf  # noqa: E402
 texts = (pdf.METHOD_NOTE + ajuda.help_html() + " ".join(" ".join(t) for t in glossario.TERMS.values())
          + " ".join(" ".join(r) for r in planilha.SESSION_COLUMNS) + str(planilha.FINGER_DESCRIPTIONS)
-         + open(os.path.join(ROOT, "README.md"), encoding="utf-8").read())
+         + open(os.path.join(ROOT, "README.md"), encoding="utf-8").read()
+         + open(os.path.join(ROOT, "docs", "METODOLOGIA.md"), encoding="utf-8").read())
 gone = ("entre 5° e 15°", "6° a 36°", "cerca de 1 mm de ruído", "abaixo de −3", "no plano do movimento",
         "10 a 23%", "10% a 23%", "média de 8 quadros e fica abaixo", "contam como 0° (erro de medida)",
         "parte do desvio entra como flexão")

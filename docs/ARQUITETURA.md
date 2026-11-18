@@ -82,7 +82,7 @@ relativos a essa pasta base, com `/`, então a pasta pode ser copiada para outro
 - `tests/test_arquitetura.py`: as camadas (imports), sem imports relativos, sem `import *`.
 - `tests/test_reorganizacao.py`: o resultado completo da gravação de referência é idêntico ao guardado em
   `tests/dados/referencia_resultados.json`. Uma mudança intencional de cálculo exige gerar de novo esse
-  arquivo e documentar a mudança em `docs/AUDITORIA_CALCULOS.md`.
+  arquivo e documentar a mudança em `docs/AUDITORIA_CALCULOS.md`, `docs/METODOLOGIA.md` e `CHANGELOG.md`.
 - `tests/test_pastas.py`: pastas do banco padrão e de outro banco, logotipo, e `dados_locais` intacto.
 
 ## Convenções

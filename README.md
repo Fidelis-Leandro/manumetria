@@ -2,304 +2,128 @@
 
 **Avaliação cinemática da mão por visão computacional**
 
-O ManuMetria mede os movimentos da mão com uma **webcam comum**, sem marcadores, para profissionais de
-reabilitação. A câmera encontra 21 pontos da mão (MediaPipe) e o sistema calcula, ao vivo, os ângulos de
-cada articulação dos dedos (MCP, PIP, DIP e IP do polegar), o TAM (*total active motion*), as repetições e a
-qualidade do movimento. Uma mão 3D desenhada pelo próprio sistema mostra, por cores, a situação de cada
-articulação. As avaliações ficam numa ficha por paciente, com a evolução ao longo do tempo, relatório em
-PDF e exportação em CSV.
+O ManuMetria mede a amplitude de movimento das articulações dos dedos usando só a webcam do computador,
+sem marcadores nem equipamento extra. Enquanto o paciente abre e fecha a mão, o sistema mostra as medidas
+ao vivo, guarda cada avaliação na ficha do paciente e acompanha a evolução ao longo do tratamento.
 
-> Software de pesquisa. Não é dispositivo médico registrado na ANVISA.
+## Para quem é
 
----
+- **Fisioterapeutas, terapeutas ocupacionais e terapeutas da mão** que querem registrar e acompanhar a
+  amplitude de movimento dos dedos.
+- **Pesquisadores** em reabilitação e biomecânica da mão, que precisam de dados padronizados e
+  exportáveis.
+- **Instituições e possíveis licenciados** que avaliam o software.
+
+## O que o sistema faz
+
+- **Cadastro e ficha de pacientes**: dados clínicos, situação (em tratamento ou alta) e lista de
+  avaliações.
+- **Avaliação ao vivo** com a imagem da câmera e uma **mão 3D colorida**, em que cada articulação mostra a
+  situação do seu dedo.
+- **Medidas por articulação e por dedo**: flexão, amplitude total, % do normal, repetições, velocidade,
+  independência dos dedos e outras.
+- **Evolução e comparação entre avaliações**, com o **erro de medida** estimado pelo reteste, para saber se
+  uma mudança é real.
+- **Relatório em PDF**, com o logotipo da instituição.
+- **Exportação** em planilha para o Excel e em **dataset de pesquisa anonimizado** (pseudonimizado).
+- **Modo simulação**, com uma mão simulada, para conhecer o sistema sem câmera.
+
+![Mão 3D da tela de avaliação: cada esfera é uma articulação medida, na cor do % do normal do dedo](docs/mao3d_procedural_vista.png)
 
 ## Requisitos
 
-- Windows 10 ou 11 (64 bits);
-- **Python 3.11** (64 bits);
-- internet durante a instalação e cerca de 1 GB de espaço livre;
-- uma webcam, para medir de verdade (sem câmera, dá para usar a mão simulada);
-- placa de vídeo com OpenGL 2.0 ou superior (qualquer computador recente).
+- Windows 10 ou 11, 64 bits.
+- Uma webcam comum (sem câmera, só o modo simulação).
+- Cerca de 1 GB de espaço livre.
+- Placa de vídeo com OpenGL 2.0 ou superior (qualquer computador recente).
+- Internet **só durante a instalação**. Depois, o sistema funciona sem internet.
 
-## Instalação passo a passo
+## Instalação
 
-1. **Baixe o projeto**: no GitHub, **Code → Download ZIP** (e descompacte), ou `git clone` do repositório.
-2. **Instale o Python 3.11**, se ainda não tiver: no PowerShell, rode
-   `winget install -e --id Python.Python.3.11`
-   (ou baixe em <https://www.python.org/downloads/release/python-3119/>, marcando *Add python.exe to PATH*).
-3. **Dê dois cliques em `Instalar sistema.bat`.** Ele:
-   - cria o ambiente Python só deste projeto (`.venv`);
-   - instala os pacotes do `requirements.txt`;
-   - baixa o modelo de detecção da mão do MediaPipe (`hand_landmarker.task`);
-   - roda os testes automáticos;
-   - cria 3 pacientes fictícios de demonstração.
+1. **Baixe o ManuMetria** e descompacte a pasta onde quiser (por exemplo, em Documentos).
+2. **Instale o Python 3.11**, se o computador ainda não tiver: baixe em
+   <https://www.python.org/downloads/release/python-3119/> o instalador do Windows de 64 bits e, na
+   primeira tela, marque **Add python.exe to PATH**.
+3. **Dê dois cliques em `Instalar sistema.bat`.** Ele prepara tudo sozinho e cria três pacientes
+   fictícios de demonstração. Leva de 2 a 10 minutos e termina com a mensagem
+   `=== Instalacao concluida ===`.
+4. **Para abrir o ManuMetria, dê dois cliques em `Abrir sistema.bat`** (com a webcam) ou em
+   `Abrir simulacao.bat` (com a mão simulada). Se quiser, crie um atalho do `Abrir sistema.bat` na área de
+   trabalho.
 
-   Leva de 2 a 10 minutos na primeira vez e termina com `=== Instalacao concluida ===`.
-4. **Abra o ManuMetria:**
-   - **`Abrir sistema.bat`**: com a webcam;
-   - **`Abrir simulacao.bat`**: com uma mão simulada (não precisa de câmera).
-
-O passo a passo manual (e a solução dos problemas mais comuns) está em [INSTALACAO.md](INSTALACAO.md).
+Passo a passo detalhado e solução de problemas: [INSTALACAO.md](INSTALACAO.md).
 
 ## Como usar
 
-1. **Pacientes** (tela inicial): cadastre um paciente ou abra a ficha de um paciente existente (dois cliques).
-2. Na **ficha**, clique em **Nova avaliação**.
-3. Peça ao paciente para mostrar a mão com a **palma voltada para a câmera**, a cerca de 50 cm, com boa luz.
+1. Na tela **Pacientes**, clique em **Novo paciente** ou abra a ficha de um paciente (dois cliques).
+2. Na ficha, clique em **Nova avaliação**.
+3. Posicione a mão do paciente com a **palma voltada para a câmera**, a cerca de 50 cm, com boa luz.
 4. **Calibração**: o sistema pede a mão aberta e parada por 2 segundos.
 5. Peça o movimento (por exemplo, abrir e fechar a mão o máximo possível, algumas vezes). Os cartões dos
-   dedos contam os movimentos ao vivo; clique num dedo para ver os detalhes.
-6. A tela de avaliação abre com a **câmera** em destaque e a **mão 3D** na miniatura do canto (clique na
-   miniatura, ou nos botões *Câmera* / *Modelo 3D*, para trocar). Na mão 3D, cada esfera de articulação tem a cor do seu dedo, conforme o % do normal do TAM ativo na
-   sessão: vermelho abaixo de 50%, amarelo de 50% até abaixo de 75% e verde a partir de 75% (cinza enquanto não há
-   medidas). Arraste para girar e passe o mouse sobre uma articulação para ver o nome e os valores dela.
+   dedos contam os movimentos ao vivo; clique num dedo para ver os detalhes. Os botões **Câmera** e
+   **Modelo 3D** trocam a imagem principal; na mão 3D, passe o mouse sobre uma articulação para ver os
+   valores.
+6. Clique em **Encerrar sessão**. No relatório, escreva as observações, use **Fazer reteste** quando quiser
+   estimar o erro de medida e clique em **Salvar na ficha**.
+7. Clique em **Gerar PDF** para o relatório (ou **Exportar CSV** para os números).
+8. Na ficha, acompanhe a evolução no gráfico e no mapa, e use **Comparar** para ver duas avaliações lado a
+   lado.
 
-   ![Mão 3D da tela de avaliação: cada esfera é uma articulação medida, na cor do % do normal do dedo](docs/mao3d_procedural_vista.png)
+A tela **Ajuda** explica cada medida, e passar o mouse sobre um número também mostra a explicação. Para
+conhecer o sistema, abra a ficha dos pacientes fictícios **João Pereira (fictício)** ou
+**Maria Souza (fictícia)**.
 
-7. Clique em **Encerrar sessão**. No relatório, escreva as observações, faça o **reteste** quando indicado e
-   **salve na ficha**. Depois, gere o **PDF** ou o **CSV**.
-8. A **ficha** mostra a evolução (gráfico, mapa, comparação entre avaliações). A tela **Ajuda** explica cada
-   medida; passar o mouse sobre um número também mostra a explicação.
+## Medidas
 
-Para conhecer o sistema com os pacientes fictícios: abra a ficha do **João Pereira (fictício)** (tendões
-flexores, zona II) ou da **Maria Souza (fictícia)** (fratura do rádio distal, com alta e platô).
+- **Flexão**: quanto cada articulação do dedo dobra, em graus. Valores negativos indicam hiperextensão.
+- **TAM** (*total active motion*, movimento ativo total): a soma do movimento das articulações de um dedo,
+  descontando o que falta para esticar.
+- **% do normal**: o TAM do dedo comparado com o de uma mão sem limitação. Na tela e na mão 3D: vermelho
+  abaixo de 50%, amarelo de 50% até abaixo de 75% e verde a partir de 75%.
+- **Repetições**: quantas vezes o paciente fechou e abriu o dedo, classificadas em movimento, parcial e
+  completa conforme a amplitude.
+- **Velocidade**: rapidez ao fechar e ao abrir o dedo, em graus por segundo.
+- **Independência**: quanto o dedo consegue se mover sem arrastar os outros junto.
 
-### O que o sistema faz
+O sistema também calcula o déficit de extensão, o arco funcional, o escore de Strickland, a distância
+polpa–palma, a suavidade do movimento, sinais de fadiga, o tremor e a confiabilidade de cada avaliação.
 
-| Tela | Funções |
-|---|---|
-| **Pacientes** | cadastro, busca, filtro por situação, % do normal, tendência, destaque de quem está sem avaliação há mais de 3 semanas, exportação (planilha identificada para o Excel ou dataset pseudonimizado para pesquisa) |
-| **Ficha** | dados do paciente, resumo por regras, lista de avaliações, gráfico de evolução (datas ou semanas desde a lesão), mapa da evolução, comparação entre avaliações, exclusão de avaliação |
-| **Avaliação** | câmera + mão 3D com as articulações coloridas, contagem de movimentos por dedo, medidas ao vivo, aviso de mão de lado / longe / perto, qualidade da captura, contador de repetições fortes, conferência ao encerrar |
-| **Relatório** | resultado por dedo, observações do profissional, reteste, PDF e CSV |
-| **Configurações** | instituição e logotipo do PDF, tema claro/escuro, tamanho da interface, suavização do sinal (Desligada / EMA / Kalman / EMA + Kalman; só na exibição ou também nas medidas), recálculo de avaliações antigas |
-| **Ajuda** | como avaliar, como medir bem, glossário de todas as medidas, limites do sistema |
+Como cada medida é calculada (goniometria ISB, filtros, referências clínicas e verificação dos cálculos):
+[docs/METODOLOGIA.md](docs/METODOLOGIA.md). Mudanças de método entre versões: [CHANGELOG.md](CHANGELOG.md).
 
-**Medidas** (detalhes na tela Ajuda): flexão de cada articulação, TAM e TAM ativo (% do normal), déficit de
-extensão, arco de movimento e arco funcional (Bain et al., 2015), escore de Strickland, distância
-polpa–palma, repetições (movimento / parcial / completa), velocidades de flexão, extensão e pico, suavidade
-(SPARC), ciclo, cadência e regularidade, indicadores de fadiga, consistência do esforço, independência dos
-dedos e contribuição de cada articulação, abertura dos dedos e do polegar, tremor, confiabilidade da
-avaliação, erro de medida por teste–reteste (MDC), mudança real, tendência e platô.
+## Dados e privacidade
 
-### Mudança de método na versão 1.2.0
+- **Os dados ficam só neste computador**, na pasta `dados_locais/`: pacientes, avaliações e os pontos da
+  mão de cada quadro. O sistema não grava vídeo e não envia nada para a internet.
+- **Cópia de segurança**: antes de cada atualização, o sistema copia o banco para
+  `dados_locais/copias_de_seguranca/`. Para se proteger de perda do computador, copie a pasta
+  `dados_locais/` regularmente para um local seguro, com o sistema fechado.
+- **Exportações** (botão **Exportar dados**, na tela Pacientes):
+  - **Planilha para o Excel**: identificada (nome, condição e datas), para uso clínico;
+  - **Dataset para pesquisa**: pseudonimizado, sem nome nem data de nascimento, com datas relativas e
+    dicionário de dados.
+- **LGPD**: dado de saúde é dado pessoal sensível, e os pontos 3D da mão são dado biométrico. No uso com
+  pacientes reais, proteja o computador (senha, criptografia do disco) e obtenha o consentimento dos
+  pacientes.
+- **Pesquisa**: o uso dos dados em pesquisa exige aprovação do Comitê de Ética em Pesquisa (CEP) e o
+  consentimento dos participantes; compartilhe o dataset só com acesso controlado.
 
-A versão 1.2.0 (auditoria dos cálculos, [docs/AUDITORIA_CALCULOS.md](docs/AUDITORIA_CALCULOS.md)) mudou a
-forma de calcular algumas medidas:
+## Limitações e aviso
 
-- ângulos por decomposição por osso, recomendação ISB (Wu et al., 2005), a mesma conta da versão web e do
-  Hand Filter Lab: a abdução não entra mais na flexão;
-- amplitude, classificação, velocidades e excursão de cada repetição pelos dados brutos, com início e fim
-  pelo critério da meia sensibilidade (pausas não entram no tempo);
-- déficit de extensão sem a tolerância de 3°;
-- independência com o mesmo sinal no numerador e no denominador;
-- SPARC sobre a norma das velocidades articulares;
-- na ficha, a mudança da extensão é classificada pelo déficit (aumentar a hiperextensão não conta como
-  melhora).
+- O ManuMetria é **software de pesquisa**. **Não é dispositivo médico registrado na ANVISA.**
+- As medidas são estimativas feitas por uma câmera comum. A precisão depende da **câmera**, da **luz** e
+  da **posição da mão**: a mão de lado, longe demais ou com dedos escondidos atrás de outros piora a medida.
+- O sistema ainda não foi comparado com o goniômetro manual. Use o reteste para saber quanto a medida varia
+  no seu ambiente.
+- Os resumos e as interpretações são apoio à decisão. O ManuMetria **não substitui a avaliação
+  profissional**.
 
-Por isso, as avaliações salvas antes da 1.2.0 **não são comparáveis** às novas até serem atualizadas: abra
-**Configurações > Recalcular avaliações**. O recálculo passa os pontos gravados pelo cálculo novo, mostra o que
-muda antes de gravar e guarda o resultado anterior na própria avaliação. As avaliações feitas antes de
-15/10/2026 não têm pontos gravados e **ficam no método antigo**.
+## Licença
 
-### Tratamento do sinal
+A definir. Bibliotecas de terceiros e as suas licenças: [AVISOS_TERCEIROS.md](AVISOS_TERCEIROS.md).
 
-Os ângulos são calculados quadro a quadro a partir dos pontos do MediaPipe. O que o código faz, nesta ordem:
-
-- **descarta** quadros com ângulos fisicamente impossíveis (fora de −60° a 130°) e quadros com a mão de
-  lado (palma a mais de 60° da frente), como se fossem falhas de detecção;
-- em falhas curtas de detecção (até 0,4 s), **mantém a última pose** e não atualiza as medidas; o lado da
-  mão (direita/esquerda) é fixado na calibração;
-- **suaviza a exibição ao vivo**: os ângulos de cada articulação (um filtro independente por articulação)
-  passam pelos mesmos filtros e parâmetros do artigo EMA × Kalman (Fidelis, ERAMIA-RS 2026; implementação
-  de referência no repositório `computer-vision-based-hand-kinematic-assessment`), escolhidos em
-  Configurações:
-
-  | Modo | Equações | Parâmetros | Atraso médio |
-  |---|---|---|---|
-  | Desligada | dados brutos | — | 0 |
-  | EMA | y = α·z + (1 − α)·y anterior | α = 0,30 | ≈ 2,3 quadros |
-  | Kalman | posição constante: P⁻ = P + Q; K = P⁻/(P⁻ + R); x = x + K·(z − x); P = (1 − K)·P⁻ | Q = 0,01; R = 0,10; P₀ = 1; x₀ = 1º valor | ≈ 2,7 quadros (K estável ≈ 0,27) |
-  | **EMA + Kalman** (padrão, como no aplicativo do artigo) | EMA e depois Kalman | os dois acima | ≈ 5,0 quadros (≈ 0,17 s a 30 quadros/s) |
-
-  **Por padrão, o filtro vale só para a exibição ao vivo** (valor "Agora" das articulações, dica da mão
-  3D e gráfico "TAM nos últimos 20 s"). **Todas as medidas da sessão usam os dados brutos** (máximos,
-  mínimos, déficits, TAM ativo, % do normal, repetições, velocidades, SPARC, independência, PDF e CSV),
-  iguais às do modo Desligada. Motivo: a suavização **achata os picos**. Na gravação de referência
-  (mão saudável, cálculo da versão 1.2.0), aplicando EMA + Kalman também nas medidas:
-
-  | Dedo | Repetições | TAM ativo (% do normal) | Velocidade de pico (°/s) |
-  |---|---|---|---|
-  | Polegar | 32 → 21 | 65 → 61 | 332 → 111 (−66%) |
-  | Indicador | 23 → 19 | 98 → 88 | 246 → 182 (−26%) |
-  | Médio | 31 → 22 | 104 → 94 | 237 → 165 (−30%) |
-  | Anelar | 27 → 21 | 107 → 98 | 278 → 172 (−38%) |
-  | Mínimo | 25 → 16 | 108 → 99 | 372 → 266 (−29%) |
-
-  (dados brutos → suavizado nas medidas). A flexão máxima da MCP do indicador cai de 81,5° para 71,1°,
-  no limite do arco funcional (71°) ([comparação](docs/filtros_comparacao.png)).
-
-  Para reproduzir o pipeline do artigo, marque em Configurações **"Aplicar a suavização também nas
-  medidas"**: o filtro entra antes do contador de repetições e de todas as medidas. O filtro só usa a
-  sequência de quadros (não o relógio), então recalcular a partir dos pontos gravados dá o mesmo resultado
-  da avaliação ao vivo. Quadros descartados ou "segurando" não entram no filtro; perda longa da mão, mão de
-  lado, pausa, recalibração e nova avaliação o zeram. Calibração, tremor, abertura dos dedos e
-  polpa–palma usam sempre os dados brutos. Cada avaliação registra o filtro e se ele entrou nas medidas
-  (PDF, CSV e dicionário de dados), e "Recalcular avaliações" usa sempre esse registro (sem registro:
-  Desligada; sem a indicação de medidas: dados brutos);
-- os **ângulos** são medidos por decomposição por osso, recomendação ISB (Wu et al., 2005): cada osso tem
-  eixos próprios, e a abdução (dedo desviado para o lado) fica separada da flexão;
-- o **contador de repetições** decide QUANDO há uma repetição sobre a média dos últimos 8 quadros do TAM,
-  com histerese igual à sensibilidade medida na calibração (3 × o tremor parado, medido nos dados brutos).
-  A amplitude (pico menos vale), a classificação movimento / parcial / completa, o TAM no pico, a excursão
-  de cada articulação e as velocidades médias saem dos **dados brutos**. O início e o fim de cada subida e
-  descida seguem um critério do sistema (sem fonte na literatura): último instante a até meia sensibilidade
-  do vale, primeiro instante a até meia sensibilidade do pico. Assim, pausas não entram no tempo;
-- **déficit de extensão** = maior valor entre 0 e a menor flexão, como na fórmula do TAM da ASSH (a
-  hiperextensão conta 0);
-- a **velocidade de pico** usa uma derivada por mínimos quadrados em 5 pontos (Savitzky–Golay de 1ª ordem)
-  do TAM de cada repetição, e a **suavidade** (SPARC, Balasubramanian et al., 2015) a norma das velocidades
-  das articulações do dedo, em grade uniforme de 30 Hz (dados brutos; suavizados só com a opção "também nas
-  medidas").
-
-### Limites
-
-- As medidas são **estimativas por câmera comum**, sem marcadores: não substituem a goniometria. O sistema
-  ainda não foi comparado com o goniômetro manual; o erro em graus não é conhecido (o reteste estima quanto a
-  medida varia ao repetir).
-- O erro aumenta com a mão de lado; por isso só entram na medida os quadros com a palma até 60° da frente.
-- A rotação de cada dedo em torno do próprio eixo não aparece nos 21 pontos da câmera, e a base do
-  metacarpo não é marcada: na MCP, a linha do punho até a base do dedo faz o papel do metacarpo.
-- Com uma câmera só, dedos escondidos atrás de outros não são medidos.
-- A interpretação (resumo, mudança real, platô) é feita por regras explícitas: apoio à decisão, não
-  diagnóstico.
-
-### Verificação dos cálculos
-
-Cada medida tem um teste automático de **resposta conhecida** (`tests\test_auditoria.py`, rodado pelo
-`tests\testar.py`); o relatório completo da auditoria da versão 1.2.0 está em
-[docs/AUDITORIA_CALCULOS.md](docs/AUDITORIA_CALCULOS.md).
-
-| Medida | Como é testada |
-|---|---|
-| Ângulos (MCP, PIP, DIP, IP) com sinal | autoteste do Hand Filter Lab e 300 poses do modelo de mão do lab com abdução (erro ~0), mão girada no espaço, hiperextensão, mão esquerda = espelho da direita; prova contra o JavaScript original na gravação (diferença ≤ 0,005°) |
-| TAM, TAM ativo, déficit, arco, % do normal, classificação | sequências de ângulos com máximos e mínimos conhecidos, déficit = max(0, menor flexão), dedo sem dados, TAM negativo |
-| Repetições, classificação, velocidades, ciclo, cadência, regularidade, tendências, esforço | sinais em cosseno com amplitude e período conhecidos (amplitude 200°, velocidade de pico = A·π/T), instantes de início e fim refeitos à parte, pausa antes e no topo, queda linear de amplitude, uma repetição só, nenhuma repetição |
-| Derivada e SPARC | seno com derivada exata (resposta do filtro de Savitzky–Golay), movimento em sino, velocidade nula, articulações em sentidos opostos (norma das velocidades) |
-| Independência, acoplamento, contribuição | um dedo sozinho (100%) e todos juntos (acoplamento = (A − sensibilidade)/A); divisão conhecida entre as articulações |
-| Sensibilidade e calibração | ruído de desvio padrão conhecido (3 × desvio), calibração sem dados (5°) |
-| Arco funcional, Strickland | contas feitas à mão com as faixas de Bain et al. (2015) e as classes de Strickland e Glogovac (1980) |
-| Abertura dos dedos e do polegar, polpa–palma | mão plana com direções e distâncias definidas |
-| Tremor | oscilação senoidal de frequência e amplitude conhecidas (frequência e RMS = A/√2) |
-| Erro de medida (MDC), mudança real, tendência, platô | pares teste–reteste com o MDC calculado à mão (1,96 × desvio das diferenças), +5 pp por semana |
-| Tela, banco, CSV e recálculo | na gravação de referência: o salvo é o que a tela mostra, o CSV converte as unidades certas, o dicionário cobre todas as colunas e "Recalcular avaliações" num banco temporário reproduz o resultado |
-| Banco e gravação (`tests\test_banco.py`) | migração com cópia de segurança e idempotente, código fixo da avaliação (apagar a A02 não muda a A03), pontos gravados antes da linha no banco e de forma atômica, exclusão sem deixar avaliação apontando para arquivo apagado, versão e método registrados |
-| Pastas do banco e logotipo (`tests\test_pastas.py`) | banco padrão em `dados_locais/`; com outro banco, pontos em `pontos/` ao lado dele e caminho relativo à pasta dele (a pasta pode ir para outro disco); demonstração em outro banco; logotipo escolhido copiado para `dados_locais/`; `dados_locais` com o mesmo SHA-256 no fim |
-| Dataset para pesquisa (`tests\test_dataset.py`) | releitura com o pandas (ou o módulo csv), IDs ligando todos os arquivos, medidas de `dedos.csv` refeitas a partir de `quadros` (tolerância 0,001°), nenhum nome nem data de nascimento nos arquivos, idade conferida à mão, checksums, dicionário com 100% das colunas, mesmos bytes ao exportar de novo |
-| Números citados nos textos | conferidos na gravação de referência (quadros descartados, tremor parado, tamanho da mão na imagem, tabela dos filtros) |
-| Checagem clínica | a mão saudável da gravação de referência não recebe nenhuma limitação |
-| Números da gravação de referência (`tests\test_reorganizacao.py`) | o resultado completo (todas as medidas de todos os dedos, com a suavização padrão e com EMA + Kalman nas medidas) é idêntico ao guardado em `tests/dados/referencia_resultados.json` |
-| Camadas do código (`tests\test_arquitetura.py`) | nenhuma camada importa uma camada posterior (veja [docs/ARQUITETURA.md](docs/ARQUITETURA.md)) |
-
-### Dados e exportação para pesquisa
-
-**Onde ficam.** Pacientes, avaliações e pontos da mão ficam **só neste computador**, em `dados_locais/`
-(SQLite + arquivos `.npz` com os 21 pontos de cada quadro, sem vídeo). Nada é enviado para a internet. Essa
-pasta não vai para o GitHub (`.gitignore`). Dado de saúde é dado pessoal sensível (LGPD, art. 11): no uso
-com pacientes reais, proteja o computador (senha, criptografia do disco) e obtenha o consentimento dos
-participantes.
-
-**Banco.** O esquema tem versão (`PRAGMA user_version`). Ao abrir uma versão nova, o banco se atualiza
-sozinho, numa transação só, depois de copiado para `dados_locais/copias_de_seguranca/`; a atualização só
-acrescenta (nenhuma medida muda). A versão 1.3.0 acrescentou o sexo do paciente, o pseudônimo de pesquisa
-(`id_pesquisa`, aleatório) e o **código fixo de cada avaliação** no paciente (A01, A02...: atribuído ao
-salvar e nunca renumerado; apagar uma avaliação deixa um buraco). Os pontos da mão são gravados antes da
-avaliação entrar no banco, num arquivo temporário trocado pelo definitivo no fim: se o programa fechar no
-meio, nenhuma avaliação fica apontando para um arquivo incompleto. Com outro banco
-(`sistema.py --banco outro.sqlite`), os pontos ficam em `pontos/` ao lado desse banco, com o caminho
-relativo à pasta dele.
-
-**Horário e duração.** O horário de cada avaliação marca o início da sessão (quando a preparação começa,
-antes da calibração); a duração conta só a medição, sem a preparação, a calibração, as recalibrações e as
-pausas.
-
-**Logotipo.** O logotipo escolhido em Configurações é copiado para `dados_locais/`; o padrão, em
-`manumetria/recursos/`, não é alterado.
-
-**Rastreabilidade.** Desde a 1.3.0, cada avaliação guarda a versão do ManuMetria que calculou as medidas,
-o método dos ângulos e o fuso do horário. "Recalcular avaliações" registra a versão atual. O relatório, o
-PDF, o CSV do relatório e a planilha saem do mesmo resultado salvo.
-
-**Exportar dados** (tela Pacientes) oferece duas saídas:
-
-| | Planilha para o Excel | Dataset para pesquisa |
-|---|---|---|
-| Uso | clínico, **identificada** (nome, condição, datas) | pesquisa, **pseudonimizado** (`id_pesquisa`, sem nome nem data de nascimento) |
-| Arquivos | `avaliacoes_por_dedo.csv` + dicionário | `pacientes.csv`, `avaliacoes.csv`, `dedos.csv`, `repeticoes.csv`, `quadros/<id_avaliacao>.csv.gz`, `dicionario_de_dados.csv`, `LEIA-ME.md`, `checksums.sha256` |
-| Formato | `;`, vírgula decimal, UTF-8 com BOM (abre direto no Excel) | `,`, ponto decimal, UTF-8 sem BOM, faltante = vazio, sim/não = 1/0, ISO 8601 (pandas, R) |
-| Granularidade | avaliação × dedo | paciente, avaliação, avaliação × etapa (avaliação/reteste) × dedo, repetição, quadro |
-
-No dataset:
-
-- `quadros` traz, por quadro, o tempo, os 21 pontos 3D, a mão e a confiança do MediaPipe, a fase, o estado
-  do estabilizador, os descartes, a vista e os ângulos de cada articulação nos dados brutos e suavizados;
-  com ele dá para refazer as medidas de `dedos.csv` sem o programa;
-- as medidas das avaliações com pontos são **recalculadas dos pontos** com o cálculo da versão que exporta
-  (o mesmo da tela); `confere_com_salvo` e `maior_diferenca_salvo_graus` dizem se batem com o resultado
-  salvo. Avaliações sem pontos saem com as medidas salvas;
-- por padrão as **datas são relativas** (dias desde a primeira avaliação do paciente) e a idade é calculada
-  na exportação (a data de nascimento não sai); opções: datas exatas e a condição/diagnóstico (texto
-  livre). As observações nunca saem; as coordenadas 2D da imagem ficam fora;
-- as coordenadas 3D da mão são **dado biométrico** (LGPD, art. 5º, II): o dataset só deve ser
-  compartilhado com acesso controlado, aprovação do CEP e consentimento dos participantes. O pseudônimo
-  não pode ser revertido sem o banco local. O `LEIA-ME.md` de cada exportação traz os métodos, as
-  referências e esses avisos; a licença dos dados está a definir com o NIT;
-- tamanho: cerca de 200–250 KB por avaliação, ou ~360 KB com reteste (quase tudo em `quadros`).
-
-Para recriar os pacientes fictícios: `.venv\Scripts\python.exe tools\criar_demonstracao.py`.
-
-## Estrutura de pastas
-
-```
-sistema.py               ponto de entrada (python sistema.py --help mostra as opções)
-manumetria/              o sistema, em camadas (docs/ARQUITETURA.md)
-  calculo/               cálculo puro (numpy): goniometria, sinal, repetições, sessão, medidas, filtros, estabilizador
-  captura/               webcam e MediaPipe, arquivos de pontos, mão simulada, qualidade da captura
-  avaliacao/             motor da avaliação, formato dos resultados, interpretação clínica
-  dados/                 banco SQLite, configurações, recálculo, planilha e dataset de pesquisa
-  relatorios/            relatório da avaliação (prévia e PDF)
-  interface/             janela, telas, componentes (palco, mão 3D, painéis, gráficos), tema, ícones, glossário
-  recursos/              logotipo padrão do relatório e o modelo do MediaPipe (baixado na instalação)
-  caminhos.py, versao.py, formato.py   pastas do projeto, versão e formatação (usados por todas as camadas)
-tests/                   testes automáticos (tests\testar.py roda todos)
-requirements-dev.txt     só para os testes (pandas); não é preciso para usar o sistema
-tools/                   pacientes de demonstração, análise de gravações e pacote para o registro
-docs/                    arquitetura, auditorias e imagens da documentação
-Instalar sistema.bat     instalação completa no Windows
-Abrir sistema.bat        abre com a webcam
-Abrir simulacao.bat      abre com a mão simulada
-gerar_hash_registro.bat  pacote e hash SHA-512 para o registro de software (ver abaixo)
-```
-
-Detalhes para quem for mexer no código: [DESENVOLVIMENTO.md](DESENVOLVIMENTO.md). Bibliotecas de terceiros e
-licenças: [AVISOS_TERCEIROS.md](AVISOS_TERCEIROS.md).
-
-Linha de comando: `.venv\Scripts\python.exe sistema.py --help` (`--sim` mão simulada, `--cam 1` outra
-câmera, `--resolucao 1280x720`, `--banco outro.sqlite`, `--replay ARQUIVO` toca uma gravação de pontos).
-
-## Pacote para o registro de software (INPI)
-
-O `gerar_hash_registro.bat` (que chama `tools\gerar_hash_registro.py`) gera um ZIP só com o código-fonte e
-a documentação (sem `.git`, `.venv`, `__pycache__`, `dados_locais/`, relatórios, gravações nem o modelo
-baixado do MediaPipe), calcula o **SHA-512** do ZIP e salva o ZIP e um `.txt` com o hash, a data e a lista
-de arquivos na pasta **`REGISTRO_INPI`**, ao lado da pasta do projeto (fora do repositório).
-
-- Rode esse script **somente depois da aprovação final do orientador**, com a versão definitiva.
-- O ZIP gerado **nunca mais pode ser alterado**: qualquer mudança, mesmo de um caractere, muda o hash.
-  Não descompacte e recompacte; não renomeie arquivos dentro dele.
-- Guarde o ZIP e o `.txt` **em mais de um lugar** (por exemplo: HD externo, nuvem institucional e uma cópia
-  com o NIT).
-
-## Autor
+## Autoria
 
 **Leandro Fidelis**, Universidade Federal de Ciências da Saúde de Porto Alegre (UFCSPA), laboratório NERV.
+
+Para quem for manter o código: [DESENVOLVIMENTO.md](DESENVOLVIMENTO.md).

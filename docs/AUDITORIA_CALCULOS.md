@@ -264,7 +264,7 @@ Por que mudou:
 **Checagem clínica**: a mão saudável da gravação de referência não recebe nenhuma limitação, antes nem depois
 (teste em `tests/test_auditoria.py`).
 
-**Recálculo de avaliações da v1.1.0**: ver a seção 8.
+**Recálculo de avaliações da v1.1.0**: ver o [CHANGELOG](../CHANGELOG.md), versão 1.2.0.
 
 ## 7. Parâmetros escolhidos sem fonte (validar com goniômetro)
 

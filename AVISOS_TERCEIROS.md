@@ -59,20 +59,6 @@ Usadas apenas pelos testes automáticos; não são necessárias para usar o sist
 
 ## Referências científicas usadas no cálculo
 
-Os métodos abaixo foram implementados no próprio código do ManuMetria a partir das publicações (nenhum
-código de terceiros foi copiado):
-
-- arco funcional dos dedos: Bain G. I. et al., *J Hand Surg Eur*, 2015;40(4):406-411,
-  doi:10.1177/1753193414533754;
-- ângulos das articulações por decomposição por osso: recomendação da International Society of
-  Biomechanics para a mão (Wu G. et al., *J Biomech*, 2005); a conta é a mesma do goniômetro da versão web
-  e do Hand Filter Lab, do mesmo autor;
-- suavidade do movimento (SPARC): Balasubramanian S. et al., *J NeuroEng Rehabil*, 2015 (limiar 0,05,
-  corte de 10 Hz e norma das velocidades articulares, como no artigo);
-- classificação do TAM em % do normal: faixas de 50% e 75% no estilo da American Society for Surgery of
-  the Hand (ASSH), conhecidas por fonte secundária; os normais por articulação (85/105/70° e 60/80°) não
-  têm fonte primária conferida;
-- escore de Strickland para tendões flexores: Strickland J. W. e Glogovac S. V., *J Hand Surg Am*, 1980;
-- erro de medida: MDC95 = 1,96 × desvio padrão das diferenças teste–reteste (= 1,96 × √2 × EPM);
-- suavização dos ângulos (EMA, Kalman e EMA + Kalman): Fidelis, ERAMIA-RS 2026, com os parâmetros do
-  repositório do artigo.
+Os métodos científicos usados no cálculo foram implementados no próprio código do ManuMetria a partir das
+publicações (nenhum código de terceiros foi copiado). As referências estão em
+[docs/METODOLOGIA.md](docs/METODOLOGIA.md#9-referências-científicas).

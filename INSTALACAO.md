@@ -107,8 +107,8 @@ Esperado: EX-001 (5 avaliações), João (8) e Maria (9). Rodar de novo não dup
 Ou, por dois cliques: `Abrir sistema.bat` / `Abrir simulacao.bat` (abrem sem janela de terminal).
 
 Esperado: a janela "ManuMetria" com a lista de pacientes. Na tela de avaliação aparece a mão 3D (esferas
-nas articulações, coloridas conforme o % do normal de cada dedo). O uso está descrito em **Como usar**, no
-README.md.
+nas articulações, coloridas conforme o % do normal de cada dedo). O uso está descrito em
+[Como usar, no README.md](README.md#como-usar).
 
 ---
 
@@ -125,12 +125,8 @@ README.md.
 | Download do `hand_landmarker.task` falha | Baixe manualmente de `https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/latest/hand_landmarker.task` e coloque em `manumetria\recursos\`. |
 | A interface aparece muito pequena ou grande | Em Configurações > Interface > Tamanho (vale ao reiniciar). |
 
-## Estrutura (resumo)
+## Para saber mais
 
-- `sistema.py`: ponto de entrada. `manumetria/`: o sistema, em camadas: `calculo/` (cálculo puro),
-  `captura/` (câmera e arquivos de pontos), `avaliacao/` (motor da avaliação), `dados/` (banco, planilha,
-  dataset), `relatorios/` (PDF), `interface/` (telas) e `recursos/` (logotipo padrão e o modelo do
-  MediaPipe). Detalhes em `docs/ARQUITETURA.md`.
-- `tests/`: testes automáticos. `tools/`: demonstração, análise de gravações e o gerador do pacote para o
-  registro de software (`gerar_hash_registro.py`).
-- Detalhes para manutenção: `DESENVOLVIMENTO.md`.
+- Uso do sistema: [README.md](README.md).
+- Organização do código, testes e ferramentas: [DESENVOLVIMENTO.md](DESENVOLVIMENTO.md) e
+  [docs/ARQUITETURA.md](docs/ARQUITETURA.md).
