@@ -1,24 +1,23 @@
 """
 Suavização dos ângulos das articulações: EMA, Kalman e a cascata EMA -> Kalman.
 
-Reproduz os filtros do sistema usado no artigo EMA × Kalman (Fidelis, ERAMIA-RS
-2026), cuja implementação de referência é o repositório oficial
+Origem dos filtros e dos parâmetros: docs/METODOLOGIA.md ("Origem dos filtros").
+A implementação de referência é o repositório
 computer-vision-based-hand-kinematic-assessment (smoothing.py: SeriesFilter e
-GoniometryFilterBank; parâmetros em config.py: EMA_ALPHA, KALMAN_Q, KALMAN_R;
-chamada em workers/processing_worker.py). Os valores são os mesmos no
-repositório ARTIGO_Eramia. Só os filtros vieram de lá; a goniometria é a do
-ManuMetria (calculo/goniometria.py).
+GoniometryFilterBank; parâmetros em config.py: EMA_ALPHA, KALMAN_Q, KALMAN_R).
+Só os filtros vieram de lá; a goniometria é a do ManuMetria
+(calculo/goniometria.py).
 
 Onde se aplica (registrado em cada avaliação, chave "nas_medidas"):
   - padrão: SÓ NA EXIBIÇÃO AO VIVO (valor "Agora", dica da mão 3D, gráfico do
     TAM nos últimos 20 s). As medidas da sessão usam os dados brutos, iguais às
     do modo Desligada: a suavização achata os picos (efeito medido na gravação
-    de referência: tabela no README);
+    de referência: tabela em docs/METODOLOGIA.md);
   - nas_medidas = True (opção em Configurações): também nas medidas, antes do
-    contador de repetições, como no pipeline do artigo.
+    contador de repetições.
 
 Cada articulação de cada dedo tem o seu filtro, independente dos outros
-(como uma instância de SeriesFilter por série no artigo). O filtro só conhece
+(como uma instância de SeriesFilter por série na referência). O filtro só conhece
 a SEQUÊNCIA de valores: não usa o relógio. Assim, recalcular a partir dos
 pontos gravados dá exatamente o mesmo resultado da avaliação ao vivo.
 
@@ -35,10 +34,10 @@ Equações (n = quadro; z = ângulo medido; tudo escalar):
            correção: x  = x + K * (z - x)
                      P  = (1 - K) * P-
 
-  EMA + Kalman (padrão do aplicativo do artigo): z -> EMA -> Kalman.
+  EMA + Kalman (padrão): z -> EMA -> Kalman.
 
-Parâmetros do artigo: alfa = 0,30; Q = 0,01; R = 0,10; P0 = 1,0.
-Diferença consciente: o artigo arredondava a SAÍDA a 2 casas (só para exibir e
+Parâmetros: alfa = 0,30; Q = 0,01; R = 0,10; P0 = 1,0.
+Diferença consciente: a referência arredondava a SAÍDA a 2 casas (só para exibir e
 gravar o CSV, o estado interno não era arredondado); aqui a saída não é
 arredondada.
 """
@@ -47,7 +46,7 @@ import math
 
 import numpy as np
 
-# Parâmetros do artigo (config.py do repositório oficial)
+# Parâmetros da referência (config.py)
 EMA_ALPHA = 0.30
 KALMAN_Q = 0.01
 KALMAN_R = 0.10
@@ -55,10 +54,8 @@ KALMAN_P0 = 1.0           # covariância inicial (SeriesFilter._p = 1.0)
 
 DESLIGADA, EMA_MODO, KALMAN_MODO, CASCATA = "desligada", "ema", "kalman", "ema_kalman"
 MODOS = {DESLIGADA: "Desligada", EMA_MODO: "EMA", KALMAN_MODO: "Kalman", CASCATA: "EMA + Kalman"}
-PADRAO = CASCATA          # o aplicativo do artigo sempre usava a cascata ("obrigatória")
+PADRAO = CASCATA
 
-# Referência: Fidelis, ERAMIA-RS 2026 (EMA × Kalman); parâmetros do repositório
-# computer-vision-based-hand-kinematic-assessment (smoothing.py, config.py).
 
 
 # =============================================================================
@@ -110,7 +107,7 @@ class Kalman:
 
 
 class Cascata:
-    """EMA seguido de Kalman (o Kalman recebe a saída do EMA), como no artigo."""
+    """EMA seguido de Kalman (o Kalman recebe a saída do EMA)."""
 
     def __init__(self, alpha=EMA_ALPHA, q=KALMAN_Q, r=KALMAN_R, p0=KALMAN_P0):
         self.ema = EMA(alpha)

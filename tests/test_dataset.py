@@ -261,7 +261,7 @@ def check_export(folder, db, label, opts, expect_match=True):
     check(f"{label}: LEIA-ME com os avisos de LGPD (biométrico, acesso controlado, CEP, consentimento, "
           f"pseudônimo irreversível sem o banco) e a licença a definir",
           all(k in readme for k in ("biométrico", "art. 5º, II", "acesso controlado", "Comitê de Ética",
-                                    "consentimento", "não pode ser revertido sem esse banco", "a definir com o NIT")))
+                                    "consentimento", "não pode ser revertido sem esse banco", "Licença dos dados: **a definir**.")))
 
     # checksums
     check(f"{label}: checksums.sha256 cobre todos os arquivos e confere",

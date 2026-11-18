@@ -794,7 +794,7 @@ def _readme(s, opts):
     if s["nao_conferem"]:
         mismatch = (f"\n**Atenção:** em {len(s['nao_conferem'])} avaliação(ões) o recálculo não confere com o "
                     "resultado salvo (`confere_com_salvo = 0`), normalmente porque foram salvas por uma versão "
-                    "anterior do cálculo (a 1.2.0 mudou a goniometria). Este dataset traz as medidas "
+                    "anterior do cálculo (o método dos ângulos mudou; veja o CHANGELOG.md). Este dataset traz as medidas "
                     "recalculadas; o relatório/PDF dessas avaliações mostra as antigas. A coluna "
                     "`maior_diferenca_salvo_graus` dá o tamanho da diferença.\n")
     return f"""# Dataset ManuMetria (pesquisa)
@@ -818,7 +818,7 @@ Opções desta exportação: texto livre (condição) incluído: {yes(opts.inclu
   **aprovação do Comitê de Ética em Pesquisa (CEP)** e com o **consentimento** dos participantes, e apenas
   para o que foi aprovado.
 
-Licença dos dados: **a definir com o NIT**.
+Licença dos dados: **a definir**.
 
 ## Arquivos e relações
 
@@ -866,7 +866,7 @@ vírgula (a planilha para o Excel continua em "Exportar dados > Planilha").
   desvio padrão do TAM parado na calibração, entre 2° e 30°); amplitude e velocidades nos dados brutos;
   velocidade de pico pela derivada de Savitzky–Golay (5 pontos) do TAM reamostrado a 30 Hz; suavidade pelo
   SPARC (Balasubramanian et al., 2015) da norma das velocidades articulares.
-- Detalhes, fontes e a auditoria dos cálculos: `README.md` e `docs/AUDITORIA_CALCULOS.md` do ManuMetria.
+- Detalhes, fontes e a verificação dos cálculos: `docs/METODOLOGIA.md` do ManuMetria.
 
 Referências: Wu G. et al. ISB recommendation on definitions of joint coordinate systems... Part II: shoulder,
 elbow, wrist and hand. J Biomech 2005;38:981-992. Balasubramanian S. et al. On the analysis of movement

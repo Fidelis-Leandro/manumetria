@@ -12,7 +12,6 @@ ao vivo, guarda cada avaliação na ficha do paciente e acompanha a evolução a
   amplitude de movimento dos dedos.
 - **Pesquisadores** em reabilitação e biomecânica da mão, que precisam de dados padronizados e
   exportáveis.
-- **Instituições e possíveis licenciados** que avaliam o software.
 
 ## O que o sistema faz
 
@@ -28,7 +27,16 @@ ao vivo, guarda cada avaliação na ficha do paciente e acompanha a evolução a
 - **Exportação** em planilha para o Excel e em **dataset de pesquisa anonimizado** (pseudonimizado).
 - **Modo simulação**, com uma mão simulada, para conhecer o sistema sem câmera.
 
-![Mão 3D da tela de avaliação: cada esfera é uma articulação medida, na cor do % do normal do dedo](docs/mao3d_procedural_vista.png)
+![Lista de pacientes](docs/telas/pacientes.png)
+*Lista de pacientes: situação, % do normal, tendência e última avaliação.*
+
+![Tela de avaliação com a mão simulada](docs/telas/avaliacao.png)
+*Avaliação ao vivo (modo simulação): imagem da câmera, mão 3D na miniatura e medidas do dedo escolhido.*
+
+![Ficha do paciente com o gráfico de evolução](docs/telas/ficha.png)
+*Ficha do paciente: resumo, lista de avaliações e evolução do TAM ativo com a faixa do erro de medida.*
+
+Todas as telas mostram pacientes fictícios de demonstração.
 
 ## Requisitos
 
@@ -84,6 +92,8 @@ conhecer o sistema, abra a ficha dos pacientes fictícios **João Pereira (fict�
   completa conforme a amplitude.
 - **Velocidade**: rapidez ao fechar e ao abrir o dedo, em graus por segundo.
 - **Independência**: quanto o dedo consegue se mover sem arrastar os outros junto.
+
+![Mão 3D da tela de avaliação: cada esfera é uma articulação medida, na cor do % do normal do dedo](docs/mao3d_procedural_vista.png)
 
 O sistema também calcula o déficit de extensão, o arco funcional, o escore de Strickland, a distância
 polpa–palma, a suavidade do movimento, sinais de fadiga, o tremor e a confiabilidade de cada avaliação.

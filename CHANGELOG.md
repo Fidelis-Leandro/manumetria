@@ -2,10 +2,20 @@
 
 Da versão mais nova para a mais antiga. Como o método de cálculo funciona hoje: [docs/METODOLOGIA.md](docs/METODOLOGIA.md).
 
+## 1.4.2 — 18/11/2026
+
+Acabamento dos textos. Os cálculos são os mesmos da 1.4.0.
+
+- Textos da interface (Configurações, dicas das medidas) e do PDF ("Método e limitações") sem referência
+  ao artigo de origem dos filtros; o método e os parâmetros estão em
+  [docs/METODOLOGIA.md](docs/METODOLOGIA.md).
+- LEIA-ME do dataset de pesquisa e dicionário da planilha apontam para a METODOLOGIA e este histórico.
+- Prints das telas (pacientes, avaliação e ficha) no README.
+
 ## 1.4.1 — 18/11/2026
 
-Só documentação. O programa e os cálculos são os mesmos da 1.4.0 (as avaliações continuam registrando a
-versão 1.4.0).
+Só documentação. O programa e os cálculos são os mesmos da 1.4.0; o número de versão do programa não foi
+atualizado nesta versão, e as avaliações salvas com ela registram 1.4.0.
 
 - README reescrito para quem usa ou avalia o sistema.
 - Novos: [docs/METODOLOGIA.md](docs/METODOLOGIA.md) (ângulos, tratamento do sinal, definição das medidas,

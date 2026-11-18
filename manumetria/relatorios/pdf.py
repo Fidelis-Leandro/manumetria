@@ -60,8 +60,8 @@ def method_note(results):
     else:
         lag = filtros.atraso_quadros(reg)
         smooth = (f"Suavização do sinal: {smoothing_name(results)}, aplicada TAMBÉM NAS MEDIDAS: aos ângulos "
-                  "de cada articulação antes das repetições e das medidas, como no pipeline do artigo "
-                  f"EMA × Kalman (Fidelis, ERAMIA-RS 2026); atraso médio de cerca de {fmt_num(lag, 1)} quadros "
+                  "de cada articulação antes das repetições e das medidas; "
+                  f"atraso médio de cerca de {fmt_num(lag, 1)} quadros "
                   f"(≈{fmt_num(lag / 30.0, 2)} s a 30 quadros/s). A suavização reduz os picos: flexão máxima, "
                   "TAM ativo, velocidade de pico e contagem de repetições ficam menores que com os dados "
                   "brutos. Calibração, tremor, abertura dos dedos e polpa–palma usam os dados brutos.")

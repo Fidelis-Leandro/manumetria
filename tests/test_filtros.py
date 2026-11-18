@@ -1,7 +1,7 @@
 """
 Testes da suavização do sinal (manumetria/calculo/filtros.py) e do seu uso no motor da
 avaliação (manumetria/avaliacao/motor.py): EMA, Kalman e a cascata EMA -> Kalman com os
-parâmetros do artigo EMA × Kalman (ERAMIA-RS 2026).
+parâmetros da implementação de referência (docs/METODOLOGIA.md).
 
     .venv\\Scripts\\python.exe tests\\test_filtros.py
 """
@@ -36,7 +36,7 @@ def run(mode, signal):
     return np.array([f.update(v) for v in signal])
 
 
-# ------------------------------------------- fidelidade às equações do artigo
+# ------------------------------------------- fidelidade às equações da referência
 def paper_series(signal, alpha, q, r, use_ema=True, use_kalman=True):
     """Transcrição literal de SeriesFilter.update / update_ema_only / update_kalman_only
     (smoothing.py do repositório computer-vision-based-hand-kinematic-assessment)."""
@@ -65,12 +65,12 @@ def paper_series(signal, alpha, q, r, use_ema=True, use_kalman=True):
 rng = np.random.default_rng(7)
 sig = 40 + 30 * np.sin(np.linspace(0, 12, 400)) + rng.normal(0, 2, 400)
 a, q, r = filtros.EMA_ALPHA, filtros.KALMAN_Q, filtros.KALMAN_R
-check("parâmetros do artigo: alfa 0,30, Q 0,01, R 0,10, P0 1,0",
+check("parâmetros da referência: alfa 0,30, Q 0,01, R 0,10, P0 1,0",
       (a, q, r, filtros.KALMAN_P0) == (0.30, 0.01, 0.10, 1.0))
-check("modo padrão = EMA + Kalman (o do aplicativo do artigo)", filtros.PADRAO == "ema_kalman")
+check("modo padrão = EMA + Kalman", filtros.PADRAO == "ema_kalman")
 for mode, (e, k) in {"ema": (True, False), "kalman": (False, True), "ema_kalman": (True, True)}.items():
     diff = np.abs(run(mode, sig) - paper_series(sig, a, q, r, e, k)).max()
-    check(f"{mode}: igual à implementação do artigo", diff < 1e-12, f"maior diferença {diff:.1e}")
+    check(f"{mode}: igual à implementação de referência", diff < 1e-12, f"maior diferença {diff:.1e}")
 
 # o Kalman converge para o ganho estável calculado
 kal = filtros.Kalman()

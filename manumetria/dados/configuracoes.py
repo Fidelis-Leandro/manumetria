@@ -20,7 +20,7 @@ DEFAULTS = {
     "escala": 1.0,              # tamanho da interface: 1.0, 1.15 ou 1.3 (idem)
     "dicas_vistas": False,      # as dicas da avaliação já apareceram uma vez
     "suavizacao": filtros.PADRAO,   # filtro dos ângulos nas próximas avaliações (calculo/filtros.py)
-    "suavizacao_medidas": False,    # True: o filtro entra também nas medidas (pipeline do artigo)
+    "suavizacao_medidas": False,    # True: o filtro entra também nas medidas
 }
 
 

@@ -209,12 +209,12 @@ class SettingsScreen(QtWidgets.QWidget):
         explain(smooth_label, "suavizacao")
         f.addRow(smooth_label, smooth_row)
         self.smooth_measures = QtWidgets.QCheckBox(
-            "Aplicar a suavização também nas medidas (como no pipeline do artigo)")
+            "Aplicar a suavização também nas medidas")
         self.smooth_measures.setStyleSheet(f"QCheckBox {{ color: {TEXT}; font-size: 13px; spacing: 8px; }}")
         explain(self.smooth_measures, "suavizacao_medidas")
         f.addRow("", self.smooth_measures)
         smooth_hint = label(
-            "Filtro aplicado aos ângulos de cada articulação, como no artigo EMA × Kalman: reduz a tremedeira "
+            "Filtro aplicado aos ângulos de cada articulação: reduz a tremedeira "
             "da câmera, mas atrasa um pouco o sinal (EMA + Kalman: cerca de "
             f"{fmt_num(filtros.atraso_quadros(filtros.registro(filtros.CASCATA)), 0)} quadros). Padrão: "
             f"{filtros.MODOS[filtros.PADRAO]} só na exibição ao vivo (valor \"Agora\", gráfico do TAM e dica "

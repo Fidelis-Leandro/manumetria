@@ -25,5 +25,5 @@ desktop.ini
 .vscode/
 .idea/
 
-# Configurações do Claude Code (ficam só na máquina de quem usa)
+# Configurações locais de ferramentas de desenvolvimento (ficam só na máquina de quem usa)
 .claude/

@@ -103,7 +103,7 @@ TERMS = {
               "sino dá cerca de −1,5; trancos deixam o valor mais negativo.",
               "SPARC, Balasubramanian et al. (J NeuroEng Rehabil, 2015), com limiar de 0,05 e corte de 10 Hz, "
               "calculado sobre a norma das velocidades das articulações do dedo (MCP, PIP e DIP; polegar: "
-              "MCP e IP), como recomenda o artigo."),
+              "MCP e IP), como recomendam Balasubramanian et al. (2015)."),
     "ciclo": ("Ciclo e cadência",
               "Tempo entre o início de uma repetição e o da seguinte, e quantas repetições cabem num minuto.",
               ""),
@@ -175,8 +175,8 @@ TERMS = {
                    f"contra a estimativa anterior (Q = {_BR(filtros.KALMAN_Q, 2)}, R = {_BR(filtros.KALMAN_R, 2)}), "
                    f"com atraso de ~{_BR(_LAG['kalman'])} quadros depois de estabilizar. EMA + Kalman (padrão): "
                    f"um depois do outro, mais liso e com atraso de ~{_BR(_LAG['ema_kalman'])} quadros "
-                   f"(~{_BR(_LAG['ema_kalman'] / 30, 2)} s a 30 quadros/s; mais com câmera lenta). Mesmos "
-                   "filtros e parâmetros do artigo EMA × Kalman (Fidelis, ERAMIA-RS 2026). Por que só na "
+                   f"(~{_BR(_LAG['ema_kalman'] / 30, 2)} s a 30 quadros/s; mais com câmera lenta). Método e "
+                   "parâmetros: docs/METODOLOGIA.md. Por que só na "
                    "exibição: o filtro achata os picos. Na gravação de referência (mão saudável), aplicado "
                    "também nas medidas, o EMA + Kalman baixou o TAM ativo do indicador de 98% para 88% do "
                    "normal, a velocidade de pico em até 66% e a contagem de repetições (23 para 19 no "
@@ -184,8 +184,8 @@ TERMS = {
                    "arco funcional. "
                    "Escolha em Configurações; cada avaliação guarda o filtro usado e onde foi aplicado."),
     "suavizacao_medidas": ("Suavização também nas medidas",
-                           "Opcional: o filtro entra antes das repetições e de todas as medidas, como no "
-                           "pipeline do artigo. Deixa as medidas mais estáveis, mas com picos menores.",
+                           "Opcional: o filtro entra antes das repetições e de todas as medidas. "
+                           "Deixa as medidas mais estáveis, mas com picos menores.",
                            "Flexão máxima, TAM ativo, velocidade de pico e repetições ficam menores que com os "
                            "dados brutos e deixam de ser comparáveis com avaliações sem essa opção. O PDF e o "
                            "CSV dizem se a opção estava marcada. Calibração, tremor, abertura dos dedos e "

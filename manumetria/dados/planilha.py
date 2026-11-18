@@ -181,8 +181,8 @@ RETEST_COLUMNS = [("reteste_pct_normal", "TAM ativo do reteste em % do normal", 
                   ("reteste_tam_ativo", "TAM ativo do reteste", "graus")]
 # rastreabilidade: no fim da linha, para não mudar a posição das outras colunas
 TRACE_COLUMNS = [("versao_calculo", "Versão do ManuMetria que calculou as medidas da linha. Vazio = não "
-                                    "registrada (avaliação salva antes da 1.3.0; a 1.2.0 mudou a goniometria, "
-                                    "veja o README). Recalcular avaliações registra a versão atual", ""),
+                                    "registrada (avaliação salva antes da 1.3.0; o método dos ângulos mudou, "
+                                    "veja o CHANGELOG.md). Recalcular avaliações registra a versão atual", ""),
                  ("metodo_goniometria", "Método dos ângulos registrado na avaliação (vazio = não registrado)", "")]
 
 

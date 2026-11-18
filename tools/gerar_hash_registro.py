@@ -4,7 +4,7 @@ Gera o pacote do código-fonte do ManuMetria para o registro de software (INPI).
     .venv\\Scripts\\python.exe tools\\gerar_hash_registro.py
     (ou dois cliques em gerar_hash_registro.bat)
 
-Rode SOMENTE depois da aprovação final do orientador, com a versão definitiva.
+Procedimento e cuidados com o pacote: DESENVOLVIMENTO.md (pacote para o registro de software).
 
 O que faz:
   1. monta um ZIP só com o código-fonte e a documentação: os arquivos
